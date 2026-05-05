@@ -1,0 +1,3 @@
+[submodule "Igalia/html-in-canvas"]
+	path = Igalia/html-in-canvas
+	url = https://github.com/WICG/html-in-canvas
