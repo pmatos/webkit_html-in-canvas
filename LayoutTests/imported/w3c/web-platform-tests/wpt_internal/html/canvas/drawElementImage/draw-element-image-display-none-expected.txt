@@ -1,0 +1,3 @@
+
+FAIL Canvas drawElementImage() should throw when drawn child is not laid out. promise_test: Unhandled rejection with value: object "TypeError: canvas.requestPaint is not a function. (In 'canvas.requestPaint()', 'canvas.requestPaint' is undefined)"
+

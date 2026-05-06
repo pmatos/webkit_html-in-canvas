@@ -1,0 +1,3 @@
+
+FAIL canvas children have layout assert_equals: expected 100 but got 0
+

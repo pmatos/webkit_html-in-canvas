@@ -1,0 +1,4 @@
+
+Harness Error (FAIL), message = Unhandled rejection: canvas.requestPaint is not a function. (In 'canvas.requestPaint()', 'canvas.requestPaint' is undefined)
+
+

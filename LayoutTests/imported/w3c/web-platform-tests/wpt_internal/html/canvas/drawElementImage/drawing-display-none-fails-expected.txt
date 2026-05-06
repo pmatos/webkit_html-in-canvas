@@ -1,0 +1,9 @@
+
+
+FAIL drawElementImage with display:none element assert_throws_dom: drawElementImage cannot draw display:none elements. function "() => context_2d.drawElementImage(canvas_2d_div, 0, 0)" threw object "TypeError: context_2d.drawElementImage is not a function. (In 'context_2d.drawElementImage(canvas_2d_div, 0, 0)', 'context_2d.drawElementImage' is undefined)" that is not a DOMException InvalidStateError: property "code" is equal to undefined, expected 11
+FAIL texElementImage2D with display:none element assert_throws_dom: texElementImage2D cannot draw display:none elements. function "() => context_gl.texElementImage2D(
+            context_gl.TEXTURE_2D, level, internalformat, format, type,
+            canvas_3d_div)" threw object "TypeError: context_gl.texElementImage2D is not a function. (In 'context_gl.texElementImage2D(
+            context_gl.TEXTURE_2D, level, internalformat, format, type,
+            canvas_3d_div)', 'context_gl.texElementImage2D' is undefined)" that is not a DOMException InvalidStateError: property "code" is equal to undefined, expected 11
+
