@@ -18,19 +18,51 @@ The runtime preference name we are introducing is `CanvasDrawElementEnabled` (Bl
 
 ## Build
 
-WebKit does **not** build with raw `cmake .` from the root. Use the canonical scripts:
+WebKit does **not** build with raw `cmake .` from the root. Use the canonical scripts. **Pick one of three dependency paths first** (`Tools/Scripts/update-webkitgtk-libs` will refuse to run otherwise):
+
+| Path | Env var | First-time setup | Notes |
+|---|---|---|---|
+| **wkdev-sdk** (Igalia recommended) | none — auto-detected when running inside the container | `git clone https://github.com/Igalia/webkit-container-sdk` + `source register-sdk-on-host.sh` + `wkdev-create --create-home` (may need root for first-time GPU profiling config) | Requires Podman. Build commands run *inside* the container via `wkdev-enter`. |
+| **Flatpak** (autonomous, used here) | `WEBKIT_FLATPAK=1` | Just set the env var; `update-webkit-flatpak --gtk` downloads `org.webkit.Platform 23.08` to `WebKitBuild/UserFlatpak/` | Runs as the current user. No sudo. Adds ~5 GB of Flatpak runtime. |
+| **JHBuild** | `WEBKIT_JHBUILD=1` | `sudo Tools/gtk/install-dependencies` to install host packages, then `update-webkitgtk-libs` builds vendored libs from source | Slowest. Needs sudo. |
+
+**Local quirk:** the user's global `python3` is shimmed to a `uv run python3` enforcement guard (Trail of Bits modern-python plugin, at `~/.claude/plugins/cache/trailofbits/modern-python/.../shims/python3`). WebKit's Python tooling does not coexist with this — invocations of `Tools/Scripts/{build-webkit,update-webkit-flatpak,run-webkit-tests,...}` need a shim-free `PATH`. Either invoke via `/usr/bin/python3` directly, or `env -u PATH PATH=/usr/local/bin:/usr/bin:/bin ...`. The repo's wrapper scripts (`Tools/Scripts/build-webkit` etc.) are perl, but they `exec` python3 internally, so the same shim-bypass applies.
+
+Once a dependency path is chosen, build with:
 
 ```sh
-# GTK port (the target for this work), debug build
-Tools/Scripts/build-webkit --gtk --debug
-# → WebKitBuild/GTK/Debug/
+# Flatpak path (autonomous; matches what's set up in this checkout)
+PATH=/usr/local/bin:/usr/bin:/bin WEBKIT_FLATPAK=1 \
+  /usr/bin/python3 Tools/Scripts/update-webkit-flatpak --gtk    # one-time; downloads SDK
+NUMBER_OF_PROCESSORS=24 PATH=/usr/local/bin:/usr/bin:/bin WEBKIT_FLATPAK=1 \
+  perl Tools/Scripts/build-webkit --gtk --debug --cmakeargs="-DUSE_LIBRICE=OFF"
+# → WebKitBuild/GTK/Debug/bin/WebKitTestRunner
 
-# Or via CMake preset (gives compile_commands.json for clangd/IDEs)
-cmake --preset gtk-dev-debug
-cmake --build --preset gtk-dev-debug
+# wkdev-sdk path (canonical)
+wkdev-enter --name wkdev
+# inside container:
+Tools/Scripts/build-webkit --gtk --debug
 ```
 
+`USE_LIBRICE=OFF` because the WebKit SDK 23.08 doesn't ship `librice-{io,proto}` and we don't need WebRTC for canvas work. Pass via `--cmakeargs=...` (the `--` separator is for ninja, not cmake).
+
+CMake preset path (`cmake --preset gtk-dev-debug && cmake --build --preset gtk-dev-debug`) gives `compile_commands.json` for clangd/IDEs but still requires the chosen dependency path to have run first.
+
 Other ports (`--wpe`, `--release` for Mac, etc.) exist but are not the target; default to GTK debug unless the user says otherwise.
+
+A cold GTK debug build is **1–3 hours** and peaks at ~6 GB RAM per concurrent translation unit on Debug. Limit parallelism with `NUMBER_OF_PROCESSORS=N` if memory-constrained — 168 GB RAM machine OOMed at the default `nproc` (61), `NUMBER_OF_PROCESSORS=24` is safe.
+
+### Running tests in Flatpak mode
+
+`WEBKIT_FLATPAK=1 run-webkit-tests` does **not** auto-enter the sandbox. The script runs on the host, spawns `WebKitTestRunner` from `WebKitBuild/GTK/Debug/bin/`, and the runner immediately fails with `error while loading shared libraries: libicudata.so.73` (SDK libs not on host). Wrap the entire invocation in `webkit-flatpak -c` to put `run-webkit-tests` inside the sandbox:
+
+```sh
+PATH=/usr/local/bin:/usr/bin:/bin WEBKIT_FLATPAK=1 \
+  perl Tools/Scripts/webkit-flatpak --gtk --debug \
+    -c bash -c "PATH=/usr/local/bin:/usr/bin:/bin perl Tools/Scripts/run-webkit-tests --gtk --debug --no-show-results --no-retry-failures --no-build <test-path>"
+```
+
+The inner `PATH=/usr/local/bin:/usr/bin:/bin` is required to bypass the user's `python3` shim again inside the sandbox shell.
 
 ## Test
 
