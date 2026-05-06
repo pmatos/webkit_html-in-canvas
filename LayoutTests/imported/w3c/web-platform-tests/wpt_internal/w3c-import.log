@@ -1,0 +1,35 @@
+The tests in this directory tree were vendored from the Chromium project.
+Do NOT modify these tests directly in WebKit.
+Instead, send a pull request to the WICG/html-in-canvas explainer:
+	https://github.com/WICG/html-in-canvas
+or to the live spec PR:
+	https://github.com/whatwg/html/pull/11588
+
+These tests are not part of upstream web-platform-tests; they live in
+Chromium's `wpt_internal/` tree until the spec is upstreamed. They were
+imported manually (not via Tools/Scripts/import-w3c-tests, which only
+syncs upstream WPT). The carve-out is recorded in
+`LayoutTests/imported/w3c/resources/import-expectations.json` so a
+re-sync of upstream WPT does NOT delete this subtree.
+
+Do NOT modify or remove this file.
+
+------------------------------------------------------------------------
+Source repository: https://chromium.googlesource.com/chromium/src
+Source paths:
+	third_party/blink/web_tests/wpt_internal/html/canvas/drawElementImage/
+	third_party/blink/web_tests/wpt_internal/resources/canvas-draw-element/
+	third_party/blink/web_tests/wpt_internal/css/support/markers.js
+Imported chromium revision: d08251e8b5287a0995aa47c33a982b860e8a6537
+Imported chromium subject:  Roll Chrome Mac PGO Profile
+Import date: 2026-05-06
+Importer: manual (cp -a + path-resolve verification under Option A)
+URL rewrites applied: none — Option A places this subtree under the WPT
+                      server's doc-root, so all `/wpt_internal/...`,
+                      `/resources/...`, `/common/...`, and `/fonts/...`
+                      absolute URLs resolve unchanged. URL invariant
+                      verified: 12 unique URLs, 11 direct hits +
+                      1 WPT-server alias, 0 misses.
+Tracking: https://github.com/pmatos/WebKit_HTML-in-canvas/issues/2 (TB0)
+Parent epic: https://github.com/pmatos/WebKit_HTML-in-canvas/issues/1
+------------------------------------------------------------------------

@@ -379,6 +379,7 @@
     "web-platform-tests/window-management": "skip",
     "web-platform-tests/workers": "import",
     "web-platform-tests/worklets": "import",
+    "web-platform-tests/wpt_internal": "skip",
     "web-platform-tests/x-frame-options": "import",
     "web-platform-tests/xhr": "import",
     "web-platform-tests/xml": "import"
