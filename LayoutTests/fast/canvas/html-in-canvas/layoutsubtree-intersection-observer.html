@@ -1,0 +1,26 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>IntersectionObserver fires on direct child of <canvas layoutsubtree></title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<style>
+  body { margin: 0; padding: 0; }
+  canvas { position: absolute; top: 0; left: 0; }
+</style>
+<canvas id=canvas width=200 height=200 layoutsubtree>
+  <div id=child style="width: 100px; height: 100px;"></div>
+</canvas>
+<script>
+async_test(t => {
+    const child = document.getElementById("child");
+    const observer = new IntersectionObserver(t.step_func((entries, obs) => {
+        assert_equals(entries.length, 1, "exactly one entry");
+        const entry = entries[0];
+        assert_equals(entry.target, child, "entry targets the canvas-subtree child");
+        assert_true(entry.isIntersecting, "child is intersecting the viewport");
+        assert_greater_than(entry.intersectionRatio, 0, "intersection ratio > 0");
+        obs.disconnect();
+        t.done();
+    }));
+    observer.observe(child);
+}, "IntersectionObserver reports a child of <canvas layoutsubtree> as intersecting");
+</script>

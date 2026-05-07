@@ -1,0 +1,11 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>Cross-origin iframe inside canvas[layoutsubtree] does not paint on screen</title>
+<link rel="match" href="layoutsubtree-cross-origin-iframe-expected.html">
+<style>
+  body { margin: 0; padding: 0; background: white; }
+  canvas { position: absolute; top: 0; left: 0; background: white; }
+  iframe { border: 0; width: 200px; height: 200px; }
+</style>
+<canvas id=canvas width=200 height=200 layoutsubtree>
+  <iframe src="data:text/html,<body style='margin:0;background:red'></body>"></iframe>
+</canvas>

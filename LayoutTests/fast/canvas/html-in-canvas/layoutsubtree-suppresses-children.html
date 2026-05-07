@@ -1,0 +1,10 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>Direct children of canvas[layoutsubtree] are not painted on screen</title>
+<link rel="match" href="layoutsubtree-suppresses-children-expected.html">
+<style>
+  body { margin: 0; padding: 0; background: white; }
+  canvas { position: absolute; top: 0; left: 0; background: white; }
+</style>
+<canvas id=canvas width=200 height=200 layoutsubtree>
+  <div style="background: red; width: 200px; height: 200px;"></div>
+</canvas>

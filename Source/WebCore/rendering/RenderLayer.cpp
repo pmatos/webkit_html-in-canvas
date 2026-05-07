@@ -3802,6 +3802,7 @@ void RenderLayer::paintLayerContents(GraphicsContext& context, const LayerPainti
             PaintBehavior::FixedAndStickyLayersOnly,
             PaintBehavior::DrawsHDRContent,
             PaintBehavior::IncludeDocumentMarkers,
+            PaintBehavior::CanvasSubtreeRecord,
         };
         OptionSet<PaintBehavior> paintBehavior = paintingInfo.paintBehavior & flagsToCopy;
 
@@ -4026,6 +4027,13 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
     LayerListMutationDetector mutationChecker(*this);
 #endif
 
+    // When the layer's renderer is a <canvas layoutsubtree>, propagate
+    // PaintBehavior::CanvasSubtreeRecord to every descendant layer paint so they
+    // suppress their on-screen draw.
+    auto childPaintingInfo = paintingInfo;
+    if (CheckedPtr canvas = dynamicDowncast<RenderHTMLCanvas>(renderer()); canvas && canvas->canHaveChildren())
+        childPaintingInfo.paintBehavior.add(PaintBehavior::CanvasSubtreeRecord);
+
     for (auto* childLayer : layerIterator) {
         if (paintFlags.contains(PaintLayerFlag::PaintingSkipDescendantViewTransition)) {
             if (childLayer->renderer().effectiveCapturedInViewTransition())
@@ -4033,7 +4041,7 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
             if (childLayer->renderer().isViewTransitionPseudo())
                 continue;
         }
-        childLayer->paintLayer(context, paintingInfo, paintFlags);
+        childLayer->paintLayer(context, childPaintingInfo, paintFlags);
     }
 }
 
@@ -6683,6 +6691,7 @@ TextStream& operator<<(TextStream& ts, PaintBehavior behavior)
     case PaintBehavior::DrawsHDRContent: ts << "DrawsHDRContent"_s; break;
     case PaintBehavior::DraggableSnapshot: ts << "DraggableSnapshot"_s; break;
     case PaintBehavior::IncludeDocumentMarkers: ts << "IncludeDocumentMarkers"_s; break;
+    case PaintBehavior::CanvasSubtreeRecord: ts << "CanvasSubtreeRecord"_s; break;
     }
 
     return ts;

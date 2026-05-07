@@ -463,6 +463,30 @@ void Adjuster::adjust(RenderStyle& style) const
 
             if (element->hasTagName(legendTag))
                 style.setDisplayMaintainingOriginalDisplay(style.display().blockified());
+
+            // https://github.com/WICG/html-in-canvas
+            auto isLayoutSubtreeCanvas = [this](const Element& el) {
+                return el.hasTagName(canvasTag)
+                    && el.hasAttributeWithoutSynchronization(layoutsubtreeAttr)
+                    && m_document->settings().canvasDrawElementEnabled();
+            };
+
+            // The <canvas layoutsubtree> itself becomes a stacking context so its
+            // descendant layers parent into it for paint-suppression propagation.
+            if (isLayoutSubtreeCanvas(*element))
+                style.setIsolation(Isolation::Isolate);
+
+            // Each direct child of <canvas layoutsubtree> is blockified, position:
+            // static, and gains paint containment so it becomes a stacking context
+            // and a containing block for descendants. The on-screen draw is
+            // suppressed separately at paint time.
+            if (RefPtr parent = element->parentElement(); parent && isLayoutSubtreeCanvas(*parent)) {
+                style.setDisplayMaintainingOriginalDisplay(style.display().blockified());
+                style.setPosition(PositionType::Static);
+                auto contain = style.contain();
+                contain.add({ Style::ContainValue::Paint });
+                style.setContain(contain);
+            }
         }
 
         if (hasUnsupportedRubyDisplay(style.display(), m_element.get(), m_document))

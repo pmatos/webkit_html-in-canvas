@@ -1,0 +1,25 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>Hit-testing finds layoutsubtree canvas children</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<style>
+  body { margin: 0; padding: 0; }
+  canvas { position: absolute; top: 0; left: 0; }
+</style>
+<canvas id=canvas width=200 height=200 layoutsubtree>
+  <div id=child style="width: 100px; height: 100px;"></div>
+</canvas>
+<script>
+test(() => {
+    const found = document.elementFromPoint(50, 50);
+    assert_equals(found, document.getElementById("child"),
+        "elementFromPoint returns the layout-subtree child, not the canvas");
+}, "elementFromPoint finds direct child of <canvas layoutsubtree>");
+
+test(() => {
+    const child = document.getElementById("child");
+    const rect = child.getBoundingClientRect();
+    assert_greater_than(rect.width, 0, "child has nonzero width");
+    assert_greater_than(rect.height, 0, "child has nonzero height");
+}, "Direct child of <canvas layoutsubtree> has non-zero layout box");
+</script>

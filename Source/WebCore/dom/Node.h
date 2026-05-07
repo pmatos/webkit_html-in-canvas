@@ -667,7 +667,8 @@ protected:
         ShouldNotifyTextManipulationControllerIfDisplayed = 1 << 23,
         DescendantNeedsStyleResolution = 1 << 24,
         DirectChildNeedsStyleResolution = 1 << 25,
-        // 6 bits free.
+        IsInCanvasSubtree = 1 << 26,
+        // 5 bits free.
     };
 
     enum class TabIndexState : uint8_t {

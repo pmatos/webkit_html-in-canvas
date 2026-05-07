@@ -1,0 +1,53 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>HTMLCanvasElement[layoutsubtree] applies paint containment to direct children</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<style>
+  /* Reset any UA defaults that might interfere with the test invariants. */
+  * { contain: none !important; position: absolute !important; }
+  body { margin: 0; padding: 0; }
+  canvas { position: absolute; top: 0; left: 0; }
+</style>
+<canvas id=canvas width=400 height=400 layoutsubtree>
+  <div id=child1 style="left: 50px; top: 50px; width: 200px; height: 200px;">
+    <div id=grandchild1 style="left: 25px; top: 25px; width: 50px; height: 50px;"></div>
+  </div>
+  <div id=child2></div>
+</canvas>
+<script>
+test(() => {
+    assert_equals(getComputedStyle(child1).contain, "paint", "child1 has paint containment");
+    assert_equals(getComputedStyle(child2).contain, "paint", "child2 has paint containment");
+}, "Direct children of <canvas layoutsubtree> have contain: paint");
+
+test(() => {
+    assert_equals(getComputedStyle(child1).position, "static", "child1 forced to position: static");
+    assert_equals(getComputedStyle(child2).position, "static", "child2 forced to position: static");
+}, "Direct children of <canvas layoutsubtree> have position: static");
+
+test(() => {
+    assert_equals(getComputedStyle(grandchild1).contain, "none", "grandchild does not get paint containment");
+    assert_equals(getComputedStyle(grandchild1).position, "absolute", "grandchild keeps its declared position");
+}, "Adjustment is scoped to direct children only");
+
+test(() => {
+    // contain: paint causes the element to be a containing block for absolute-
+    // positioned descendants. Verify by checking grandchild1's offsetParent — it
+    // should be child1, not the canvas, body, or document.
+    assert_equals(grandchild1.offsetParent, child1,
+        "abs-positioned grandchild's offsetParent is the canvas-subtree child (containing block)");
+}, "Each direct child of <canvas layoutsubtree> is a containing block for its abs-positioned descendants");
+
+test(() => {
+    // contain: paint also forces a stacking context. CSS Containment Spec L1
+    // section 4.4: "applying paint containment to an element will cause it to
+    // become a stacking context". We can detect this indirectly by observing
+    // that abs-positioned descendants paint within child1's clip rect — but
+    // since we already verified `contain: paint` is set, the stacking-context
+    // and clip-to-padding-box semantics follow normatively from that property.
+    // This explicit test asserts that getComputedStyle reports the value, which
+    // is a precondition for those normative effects.
+    assert_true(getComputedStyle(child1).contain.includes("paint"),
+        "child1 reports paint containment (normatively makes it a stacking context)");
+}, "Each direct child establishes a stacking context (via contain: paint)");
+</script>

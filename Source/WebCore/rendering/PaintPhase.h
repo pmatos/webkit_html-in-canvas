@@ -81,6 +81,7 @@ enum class PaintBehavior : uint32_t {
     DrawsHDRContent                             = 1 << 22,
     DraggableSnapshot                           = 1 << 23,
     IncludeDocumentMarkers                      = 1 << 24,
+    CanvasSubtreeRecord                         = 1 << 25, // Painting under <canvas layoutsubtree>: suppress on-screen draw of subtree descendants.
 };
 
 } // namespace WebCore

@@ -1,0 +1,3 @@
+
+PASS Toggling canvas.layoutSubtree at runtime applies and removes paint containment on direct children
+

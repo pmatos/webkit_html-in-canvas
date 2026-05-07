@@ -122,6 +122,7 @@ HTMLCanvasElement::HTMLCanvasElement(const QualifiedName& tagName, Document& doc
     , CanvasBase(IntSize(defaultWidth, defaultHeight), document)
 {
     ASSERT(hasTagName(canvasTag));
+    setIsInCanvasSubtree(true);
 }
 
 Ref<HTMLCanvasElement> HTMLCanvasElement::create(Document& document)
@@ -169,6 +170,11 @@ void HTMLCanvasElement::attributeChanged(const QualifiedName& name, const AtomSt
     if (name == widthAttr || name == heightAttr) {
         if (!isControlledByOffscreen())
             didUpdateSizeProperties();
+    } else if (name == layoutsubtreeAttr) {
+        // Toggling layoutsubtree changes both the children's resolved style (via
+        // Adjuster) and our own renderer's canHaveChildren()/requiresLayer(). A pure
+        // style invalidation isn't sufficient — the render tree must be rebuilt.
+        invalidateStyleAndRenderersForSubtree();
     }
     HTMLElement::attributeChanged(name, oldValue, newValue, attributeModificationReason);
 }

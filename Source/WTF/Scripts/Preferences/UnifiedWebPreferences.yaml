@@ -1628,6 +1628,20 @@ CanvasColorTypeEnabled:
   disableInLockdownMode: true
   sharedPreferenceForWebProcess: true
 
+CanvasDrawElementEnabled:
+  type: bool
+  status: unstable
+  category: dom
+  humanReadableName: "Canvas drawElement APIs"
+  humanReadableDescription: "Enable HTML-in-canvas: <canvas layoutsubtree>, drawElementImage, captureElementImage, paint event, texElementImage2D, copyElementImageToTexture"
+  defaultValue:
+    WebKitLegacy:
+      default: false
+    WebKit:
+      default: false
+    WebCore:
+      default: false
+
 CanvasFiltersEnabled:
   type: bool
   status: testable

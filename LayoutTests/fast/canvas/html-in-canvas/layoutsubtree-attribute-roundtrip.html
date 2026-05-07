@@ -1,0 +1,31 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>HTMLCanvasElement.layoutSubtree IDL round-trip</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<canvas id="c"></canvas>
+<script>
+test(() => {
+    const canvas = document.getElementById("c");
+    assert_true("layoutSubtree" in canvas, "layoutSubtree IDL attribute exposed");
+    assert_false(canvas.layoutSubtree, "default false");
+    assert_false(canvas.hasAttribute("layoutsubtree"), "no HTML attribute by default");
+}, "default state: layoutSubtree is false, attribute absent");
+
+test(() => {
+    const canvas = document.getElementById("c");
+    canvas.layoutSubtree = true;
+    assert_true(canvas.hasAttribute("layoutsubtree"), "setter sets HTML attribute");
+    assert_true(canvas.layoutSubtree, "getter reads true");
+    canvas.layoutSubtree = false;
+    assert_false(canvas.hasAttribute("layoutsubtree"), "setter removes HTML attribute");
+    assert_false(canvas.layoutSubtree, "getter reads false");
+}, "IDL setter <-> HTML attribute round-trip");
+
+test(() => {
+    const canvas = document.getElementById("c");
+    canvas.setAttribute("layoutsubtree", "");
+    assert_true(canvas.layoutSubtree, "setAttribute makes getter return true");
+    canvas.removeAttribute("layoutsubtree");
+    assert_false(canvas.layoutSubtree, "removeAttribute makes getter return false");
+}, "HTML attribute <-> IDL getter round-trip");
+</script>

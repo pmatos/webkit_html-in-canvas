@@ -1,0 +1,4 @@
+
+PASS EnabledBySetting=CanvasDrawElementEnabled gates the IDL attribute
+PASS HTML attribute is still settable via setAttribute (it's just an unrecognized attribute when feature is off)
+

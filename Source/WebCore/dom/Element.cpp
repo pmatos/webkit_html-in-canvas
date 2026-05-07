@@ -59,6 +59,7 @@
 #include "ElementChildIteratorInlines.h"
 #include "ElementRareData.h"
 #include "ElementTextDirection.h"
+#include "ElementTraversal.h"
 #include "EventDispatcher.h"
 #include "EventHandler.h"
 #include "EventNames.h"
@@ -101,6 +102,7 @@
 #include "KeyframeEffect.h"
 #include "LargestContentfulPaintData.h"
 #include "LocalDOMWindow.h"
+#include "FrameInlines.h"
 #include "LocalFrame.h"
 #include "LocalFrameView.h"
 #include "Logging.h"
@@ -3077,6 +3079,39 @@ Node::NeedsPostConnectionSteps Element::insertionSteps(InsertionType insertionTy
 {
     ContainerNode::insertionSteps(insertionType, parentOfInsertedTree);
 
+    // Propagate IsInCanvasSubtree from parent. The parent can be either:
+    //   (a) an Element that already has the flag (intra-document descent), or
+    //   (b) a Document whose frame's owner element is in a canvas subtree
+    //       (inserting the documentElement into a sub-frame's document).
+    auto parentIsInCanvasSubtree = [&]() {
+        if (RefPtr parentElement = dynamicDowncast<Element>(parentOfInsertedTree); parentElement && parentElement->isInCanvasSubtree())
+            return true;
+        if (RefPtr parentDocument = dynamicDowncast<Document>(parentOfInsertedTree)) {
+            if (RefPtr frame = parentDocument->frame()) {
+                if (RefPtr owner = frame->ownerElement(); owner && owner->isInCanvasSubtree())
+                    return true;
+            }
+        }
+        return false;
+    }();
+    if (parentIsInCanvasSubtree)
+        setIsInCanvasSubtree(true);
+
+    // Propagate the flag across iframe boundaries: when an HTMLFrameOwnerElement
+    // already had the flag and its content document existed before it was inserted,
+    // every element in the contained document inherits the flag.
+    if (isInCanvasSubtree()) {
+        if (RefPtr owner = dynamicDowncast<HTMLFrameOwnerElement>(*this)) {
+            if (RefPtr contentDocument = owner->contentDocument()) {
+                if (RefPtr root = contentDocument->documentElement()) {
+                    root->setIsInCanvasSubtree(true);
+                    for (RefPtr e = ElementTraversal::next(*root, root.get()); e; e = ElementTraversal::next(*e, root.get()))
+                        e->setIsInCanvasSubtree(true);
+                }
+            }
+        }
+    }
+
     if (insertionType.treeScopeChanged) {
         RefPtr<HTMLDocument> newHTMLDocument = insertionType.connectedToDocument && parentOfInsertedTree.isInDocumentTree()
             ? dynamicDowncast<HTMLDocument>(treeScope().documentScope()) : nullptr;
@@ -3176,6 +3211,12 @@ bool Element::hasEffectiveLangState() const
 void Element::removingSteps(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
     ContainerNode::removingSteps(removalType, oldParentOfRemovedTree);
+
+    // Clear the IsInCanvasSubtree flag when an element is removed from its parent. The
+    // canvas itself sets the flag in its constructor and must keep it across reparenting,
+    // so we skip canvases here.
+    if (isInCanvasSubtree() && !hasTagName(canvasTag))
+        setIsInCanvasSubtree(false);
 
     if (RefPtr<Page> page = document().page()) {
 #if ENABLE(POINTER_LOCK)

@@ -50,4 +50,6 @@ typedef (
     [Conditional=OFFSCREEN_CANVAS, EnabledBySetting=OffscreenCanvasEnabled, NewObject] OffscreenCanvas transferControlToOffscreen();
 
     [Conditional=MEDIA_STREAM, NewObject] MediaStream captureStream(optional double frameRequestRate);
+
+    [CEReactions=NotNeeded, Reflect, EnabledBySetting=CanvasDrawElementEnabled] attribute boolean layoutSubtree;
 };

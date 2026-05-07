@@ -953,6 +953,12 @@ void RenderBlock::paintCarets(PaintInfo& paintInfo, const LayoutPoint& paintOffs
 
 void RenderBlock::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
+    // Direct/transitive children of <canvas layoutsubtree> have their on-screen
+    // paint suppressed. The canvas's own bitmap painting goes through
+    // RenderHTMLCanvas::paintReplaced and is not gated here.
+    if (paintInfo.paintBehavior.contains(PaintBehavior::CanvasSubtreeRecord))
+        return;
+
     auto adjustedPaintOffset = paintOffset + location();
     PaintPhase phase = paintInfo.phase;
 

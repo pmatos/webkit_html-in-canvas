@@ -1,0 +1,5 @@
+
+PASS default state: layoutSubtree is false, attribute absent
+PASS IDL setter <-> HTML attribute round-trip
+PASS HTML attribute <-> IDL getter round-trip
+

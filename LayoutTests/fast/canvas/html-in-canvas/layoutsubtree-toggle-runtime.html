@@ -1,0 +1,24 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>Toggling layoutsubtree at runtime applies/removes child paint containment without reload</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<canvas id=canvas width=200 height=200>
+  <div id=child></div>
+</canvas>
+<script>
+test(() => {
+    const canvas = document.getElementById("canvas");
+    const child = document.getElementById("child");
+
+    assert_false(canvas.layoutSubtree, "starts off");
+    assert_equals(getComputedStyle(child).contain, "none", "child has no containment initially");
+
+    canvas.layoutSubtree = true;
+    canvas.offsetHeight; // force layout
+    assert_equals(getComputedStyle(child).contain, "paint", "child gains paint containment after enabling");
+
+    canvas.layoutSubtree = false;
+    canvas.offsetHeight; // force layout
+    assert_equals(getComputedStyle(child).contain, "none", "child loses paint containment after disabling");
+}, "Toggling canvas.layoutSubtree at runtime applies and removes paint containment on direct children");
+</script>

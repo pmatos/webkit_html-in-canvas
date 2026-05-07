@@ -38,6 +38,7 @@
 #include "PaintInfo.h"
 #include "RenderBoxInlines.h"
 #include "RenderBoxModelObjectInlines.h"
+#include "RenderElementInlines.h"
 #include "RenderLayer.h"
 #include "RenderLayerBacking.h"
 #include "RenderObjectInlines.h"
@@ -69,7 +70,39 @@ bool RenderHTMLCanvas::requiresLayer() const
     if (RenderReplaced::requiresLayer())
         return true;
 
+    if (canHaveChildren())
+        return true;
+
     return canvasCompositingStrategy(*this) != CanvasPaintedToEnclosingLayer;
+}
+
+bool RenderHTMLCanvas::canHaveChildren() const
+{
+    // <canvas layoutsubtree> hosts its DOM children as real layout boxes so they
+    // remain laid out, hit-testable, and observable by IntersectionObserver. Their
+    // on-screen pixels are suppressed via PaintBehavior::CanvasSubtreeRecord.
+    if (canvasElement().hasAttributeWithoutSynchronization(HTMLNames::layoutsubtreeAttr)
+        && document().settings().canvasDrawElementEnabled())
+        return true;
+    // Allow detaching pre-existing children after the attribute is removed at runtime,
+    // since RenderTreeBuilder asserts canHaveChildren() during its teardown walk.
+    return firstChild();
+}
+
+void RenderHTMLCanvas::layout()
+{
+    // RenderReplaced does not visit children. When layoutsubtree is on we host real
+    // children that must be laid out so they have hit-testable boxes and IO geometry.
+    // Non-element fallback children (text nodes for whitespace) do not contribute
+    // visible layout — clear their needs-layout flag so the post-layout assertion
+    // passes.
+    for (auto* child = firstChild(); child; child = child->nextSibling()) {
+        if (CheckedPtr renderElement = dynamicDowncast<RenderElement>(child))
+            renderElement->layoutIfNeeded();
+        else
+            child->clearNeedsLayout();
+    }
+    RenderReplaced::layout();
 }
 
 void RenderHTMLCanvas::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOffset)

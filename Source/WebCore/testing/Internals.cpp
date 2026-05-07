@@ -1571,6 +1571,11 @@ bool Internals::effectiveLangKnownToMatchDocumentElement(Element& element)
     return element.effectiveLangKnownToMatchDocumentElement();
 }
 
+bool Internals::elementIsInCanvasSubtree(Element& element)
+{
+    return element.isInCanvasSubtree();
+}
+
 bool Internals::isFullyActive(Document& document)
 {
     return document.isFullyActive();

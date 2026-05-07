@@ -232,6 +232,7 @@ public:
     ExceptionOr<String> elementRenderTreeAsText(Element&);
     bool NODELETE hasPausedImageAnimations(Element&);
     bool NODELETE effectiveLangKnownToMatchDocumentElement(Element&);
+    bool NODELETE elementIsInCanvasSubtree(Element&);
     void markFrontBufferVolatile(Element&);
 
     bool isFullyActive(Document&);

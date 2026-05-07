@@ -42,9 +42,12 @@ public:
 
     void canvasSizeChanged();
 
+    bool canHaveChildren() const override;
+
 private:
     void element() const = delete;
     bool requiresLayer() const override;
+    void layout() override;
     ASCIILiteral renderName() const override { return "RenderHTMLCanvas"_s; }
     void paintReplaced(PaintInfo&, const LayoutPoint&) override;
     void intrinsicSizeChanged() override { canvasSizeChanged(); }

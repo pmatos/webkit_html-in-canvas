@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<title>HTMLCanvasElement.layoutSubtree gated off when CanvasDrawElementEnabled is false</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<canvas id="c"></canvas>
+<script>
+test(() => {
+    const canvas = document.getElementById("c");
+    assert_false("layoutSubtree" in canvas, "layoutSubtree IDL attribute must NOT be exposed when CanvasDrawElementEnabled is false");
+}, "EnabledBySetting=CanvasDrawElementEnabled gates the IDL attribute");
+
+test(() => {
+    const canvas = document.getElementById("c");
+    canvas.setAttribute("layoutsubtree", "");
+    assert_true(canvas.hasAttribute("layoutsubtree"), "HTML attribute can still be set as a generic attribute");
+    assert_equals(canvas.getAttribute("layoutsubtree"), "", "getAttribute reads back what setAttribute wrote");
+}, "HTML attribute is still settable via setAttribute (it's just an unrecognized attribute when feature is off)");
+</script>

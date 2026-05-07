@@ -1,0 +1,4 @@
+
+PASS elementFromPoint finds direct child of <canvas layoutsubtree>
+PASS Direct child of <canvas layoutsubtree> has non-zero layout box
+

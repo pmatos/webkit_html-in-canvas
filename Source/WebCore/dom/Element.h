@@ -726,6 +726,9 @@ public:
     void addToTopLayer();
     void removeFromTopLayer();
 
+    bool isInCanvasSubtree() const { return hasStateFlag(StateFlag::IsInCanvasSubtree); }
+    void setIsInCanvasSubtree(bool value) { setStateFlag(StateFlag::IsInCanvasSubtree, value); }
+
 #if ENABLE(FULLSCREEN_API)
     bool hasFullscreenFlag() const { return hasStateFlag(StateFlag::IsFullscreen); }
     void setFullscreenFlag(bool);

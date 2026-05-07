@@ -1,0 +1,36 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>IsInCanvasSubtree flag propagates across iframe boundary</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<canvas id=canvas width=200 height=200 layoutsubtree>
+  <iframe id=frame srcdoc="<!doctype html><html><body><div id='inner'></div></body></html>"></iframe>
+</canvas>
+<div id=outside></div>
+<script>
+async_test(t => {
+    const frame = document.getElementById("frame");
+    const outside = document.getElementById("outside");
+    frame.addEventListener("load", t.step_func(() => {
+        const innerDoc = frame.contentDocument;
+        assert_not_equals(innerDoc, null, "inner document is non-null");
+
+        const innerHtml = innerDoc.documentElement;
+        const innerBody = innerDoc.body;
+        const innerDiv = innerDoc.getElementById("inner");
+
+        assert_true(internals.elementIsInCanvasSubtree(frame),
+            "iframe element itself has the flag");
+        assert_true(internals.elementIsInCanvasSubtree(innerHtml),
+            "iframe content's <html> inherits the flag across the frame boundary");
+        assert_true(internals.elementIsInCanvasSubtree(innerBody),
+            "iframe content's <body> inherits the flag");
+        assert_true(internals.elementIsInCanvasSubtree(innerDiv),
+            "iframe content's deep descendant inherits the flag");
+
+        assert_false(internals.elementIsInCanvasSubtree(outside),
+            "no false positives: an element outside the canvas does not have the flag");
+
+        t.done();
+    }));
+}, "IsInCanvasSubtree carry-bit propagates across the iframe boundary into the contained document");
+</script>
