@@ -4031,12 +4031,13 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
 
     // When the layer's renderer is a <canvas layoutsubtree>, propagate
     // PaintBehavior::CanvasSubtreeRecord to every descendant layer paint so they
-    // suppress their on-screen draw, AND route each direct-child layer's paint into
-    // a DisplayList::RecorderImpl. The bit is CLEARED on the recording PaintInfo so
-    // descendants don't re-trigger the suppression early-return at RenderBlock::paint
-    // and actually paint into the recorder. Cross-origin iframe content is silently
-    // omitted by the existing RenderWidget::paintContents same-origin gate (TB1a),
-    // which is independent of CanvasSubtreeRecord.
+    // suppress their on-screen draw (TB1a). Then route each direct-child layer's
+    // paint into a DisplayList::RecorderImpl: the bit is CLEARED on the recording
+    // PaintInfo so descendants actually paint into the recorder, and
+    // requireSecurityOriginAccessForWidgets is SET so cross-origin iframe widgets
+    // are silently omitted by the RenderWidget::paintContents same-origin gate.
+    // The gate also propagates across nested iframe boundaries via
+    // Widget::SecurityOriginPaintPolicy::AccessibleOriginOnly.
     CheckedPtr canvas = dynamicDowncast<RenderHTMLCanvas>(renderer());
     bool isLayoutSubtreeCanvas = canvas && canvas->canHaveChildren();
     auto childPaintingInfo = paintingInfo;
@@ -4067,6 +4068,7 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
 
             auto recordingInfo = paintingInfo;
             recordingInfo.paintBehavior.remove(PaintBehavior::CanvasSubtreeRecord);
+            recordingInfo.requireSecurityOriginAccessForWidgets = true;
 
             childLayer->paintLayer(recorder, recordingInfo, paintFlags);
 

@@ -1,0 +1,10 @@
+
+
+PASS Sandboxed-same-origin iframe pixels are silently suppressed (opaque origin)
+PASS data: URL iframe pixels are silently suppressed (opaque origin)
+PASS Sandboxed srcdoc iframe pixels are silently suppressed (opaque origin)
+PASS Cross-origin iframe nested inside a same-origin iframe is suppressed (gate propagates across boundary)
+PASS Canvas remains origin-clean after drawElementImage of subtree containing cross-origin iframes
+PASS Same-origin iframe pixels are drawn into the snapshot
+PASS Cross-origin iframe pixels are silently suppressed in drawElementImage snapshot
+

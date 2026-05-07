@@ -1529,3 +1529,11 @@ imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-ink-overflow-worker.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-scaling.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-scaling-worker.html [ Skip ]
+
+# The drawElementImage/privacy/*.https.sub.html corpus tests run today as
+# deterministic FAIL baselines (canvas.requestPaint is not a function). They
+# will turn green when TB5b (issue #16) lands requestPaint(); until then the
+# FAIL is the expected outcome captured in their -expected.txt files. The
+# cross-origin iframe pixel-suppression semantic itself is exercised end-to-end
+# by http/tests/canvas/html-in-canvas/drawelementimage-iframe-suppression.https.html
+# (TB10 / issue #5), which uses requestAnimationFrame instead of requestPaint.

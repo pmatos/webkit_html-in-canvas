@@ -1,0 +1,117 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>drawElementImage iframe pixel suppression (TB10)</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<style>
+  body { margin: 0; padding: 0; }
+  canvas { display: block; }
+  iframe { border: 0; display: block; }
+</style>
+<canvas id="canvas" width="100" height="600" layoutsubtree>
+  <div id="child" style="width:100px;height:600px;background:rgb(0,128,0);position:relative">
+    <iframe id="sameOrigin" width="100" height="100"
+            style="position:absolute;left:0;top:0"
+            src="resources/iframe-blue.html"></iframe>
+    <iframe id="crossOrigin" width="100" height="100"
+            style="position:absolute;left:0;top:100px"
+            src="https://localhost:8443/canvas/html-in-canvas/resources/iframe-red.html"></iframe>
+    <iframe id="sandboxed" width="100" height="100" sandbox
+            style="position:absolute;left:0;top:200px"
+            src="resources/iframe-red.html"></iframe>
+    <iframe id="dataUrl" width="100" height="100"
+            style="position:absolute;left:0;top:300px"
+            src="data:text/html,<body style='margin:0;background:rgb(255,0,0)'></body>"></iframe>
+    <iframe id="srcdocSandboxed" width="100" height="100" sandbox
+            style="position:absolute;left:0;top:400px"
+            srcdoc="<body style='margin:0;background:rgb(255,0,0)'></body>"></iframe>
+    <iframe id="nestedCrossOrigin" width="100" height="100"
+            style="position:absolute;left:0;top:500px"
+            src="resources/nested-cross-origin-host.html"></iframe>
+  </div>
+</canvas>
+<script>
+async function nextPaint() {
+    // Five rAFs because each iframe's body needs its own paint cycle to settle
+    // before the parent's recording walk can capture it; one or two are enough
+    // for a single iframe but multiple iframes are racy.
+    for (let i = 0; i < 5; ++i)
+        await new Promise(r => requestAnimationFrame(r));
+}
+function waitForLoad(el) {
+    return new Promise(r => { el.onload = r; });
+}
+function pixelAt(imgData, x, y) {
+    const i = (y * imgData.width + x) * 4;
+    return [imgData.data[i], imgData.data[i + 1], imgData.data[i + 2], imgData.data[i + 3]];
+}
+
+const canvas = document.getElementById("canvas");
+const child = document.getElementById("child");
+
+const allLoaded = Promise.all([
+    waitForLoad(document.getElementById("sameOrigin")),
+    waitForLoad(document.getElementById("crossOrigin")),
+    waitForLoad(document.getElementById("sandboxed")),
+    waitForLoad(document.getElementById("dataUrl")),
+    waitForLoad(document.getElementById("srcdocSandboxed")),
+    waitForLoad(document.getElementById("nestedCrossOrigin")),
+]);
+
+let imgData = null;
+async function snapshot() {
+    if (imgData)
+        return imgData;
+    await allLoaded;
+    await nextPaint();
+    const ctx = canvas.getContext("2d");
+    ctx.drawElementImage(child, 0, 0);
+    imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    return imgData;
+}
+
+promise_test(async () => {
+    const data = await snapshot();
+    assert_array_equals(pixelAt(data, 50, 250), [0, 128, 0, 255],
+        "sandboxed iframe (opaque origin) must be suppressed; expect parent-div green");
+}, "Sandboxed-same-origin iframe pixels are silently suppressed (opaque origin)");
+
+promise_test(async () => {
+    const data = await snapshot();
+    assert_array_equals(pixelAt(data, 50, 350), [0, 128, 0, 255],
+        "data: URL iframe (opaque origin) must be suppressed; expect parent-div green");
+}, "data: URL iframe pixels are silently suppressed (opaque origin)");
+
+promise_test(async () => {
+    const data = await snapshot();
+    assert_array_equals(pixelAt(data, 50, 450), [0, 128, 0, 255],
+        "sandboxed srcdoc iframe (opaque origin) must be suppressed; expect parent-div green");
+}, "Sandboxed srcdoc iframe pixels are silently suppressed (opaque origin)");
+
+promise_test(async () => {
+    const data = await snapshot();
+    assert_array_equals(pixelAt(data, 50, 550), [0, 255, 255, 255],
+        "same-origin wrapper draws (cyan) but its inner cross-origin iframe is suppressed; expect cyan, not red");
+}, "Cross-origin iframe nested inside a same-origin iframe is suppressed (gate propagates across boundary)");
+
+promise_test(async () => {
+    await snapshot();
+    const ctx = canvas.getContext("2d");
+    // The canvas must remain origin-clean: cross-origin iframe pixels were
+    // suppressed at the source and never reached the bitmap, so getImageData
+    // and toDataURL must succeed without SecurityError.
+    ctx.getImageData(0, 0, 1, 1);
+    canvas.toDataURL();
+}, "Canvas remains origin-clean after drawElementImage of subtree containing cross-origin iframes");
+
+promise_test(async () => {
+    const data = await snapshot();
+    assert_array_equals(pixelAt(data, 50, 50), [0, 0, 255, 255],
+        "same-origin iframe must draw normally; expect blue");
+}, "Same-origin iframe pixels are drawn into the snapshot");
+
+promise_test(async () => {
+    const data = await snapshot();
+    assert_array_equals(pixelAt(data, 50, 150), [0, 128, 0, 255],
+        "cross-origin iframe pixels must be suppressed; expect parent-div green");
+}, "Cross-origin iframe pixels are silently suppressed in drawElementImage snapshot");
+</script>
