@@ -1,0 +1,4 @@
+
+PASS 4-arg drawElementImage with non-finite/zero/negative geometry is a silent no-op returning identity
+PASS 4-arg drawElementImage runs eligibility checks before geometry validation
+

@@ -1,0 +1,28 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>drawElementImage(child, dx, dy, dwidth, dheight) — destination scale</title>
+<style>
+  body { margin: 0; }
+  canvas { width: 200px; height: 200px; background: white; }
+  #child { width: 50px; height: 50px; background: red; }
+</style>
+<canvas id="c" width="200" height="200" layoutsubtree>
+  <div id="child"></div>
+</canvas>
+<script>
+function nextPaint() {
+    return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+async function run() {
+    if (window.testRunner) testRunner.waitUntilDone();
+    await nextPaint();
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+    const child = document.getElementById("child");
+    // Half-size: 50x50 source scaled to 25x25 at (10, 10)
+    ctx.drawElementImage(child, 10, 10, 25, 25);
+    // Double-size: 50x50 source scaled to 100x100 at (60, 60)
+    ctx.drawElementImage(child, 60, 60, 100, 100);
+    if (window.testRunner) testRunner.notifyDone();
+}
+run();
+</script>

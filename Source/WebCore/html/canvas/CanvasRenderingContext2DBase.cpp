@@ -1615,8 +1615,22 @@ ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(CanvasImageSource&& im
 
 ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImage(Element& element, double dx, double dy)
 {
-    // <canvas layoutsubtree> snapshot replay (TB1b minimum eligibility — TB4 will add the
-    // full validator). Order matches Blink's VerifyDrawElementImageEligibility.
+    return drawElementImageInternal(element, dx, dy, std::nullopt);
+}
+
+ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImage(Element& element, double dx, double dy, double dwidth, double dheight)
+{
+    // 4-arg public method does no geometry validation. All checks live in the helper, so
+    // eligibility (canvas type, layoutsubtree, parent, snapshot) runs BEFORE geometry
+    // short-circuits — a non-canvas context with NaN dwidth must throw InvalidStateError,
+    // not silently return identity. Matches Blink's VerifyDrawElementImageEligibility order.
+    return drawElementImageInternal(element, dx, dy, FloatSize { static_cast<float>(dwidth), static_cast<float>(dheight) });
+}
+
+ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImageInternal(Element& element, double dx, double dy, std::optional<FloatSize> explicitDestSize)
+{
+    // <canvas layoutsubtree> snapshot replay. Eligibility (TB1b minimum — TB4 will add the
+    // full validator); order matches Blink's VerifyDrawElementImageEligibility.
     RefPtr canvasElement = dynamicDowncast<HTMLCanvasElement>(canvasBase());
     if (!canvasElement)
         return Exception { ExceptionCode::InvalidStateError, "drawElementImage requires an HTMLCanvasElement context"_s };
@@ -1631,19 +1645,44 @@ ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImage(Eleme
     if (!record)
         return Exception { ExceptionCode::InvalidStateError, "No snapshot recorded for element"_s };
 
+    // Geometry validation. Non-finite dx/dy and (when explicit) non-finite/zero/negative
+    // dwidth/dheight → silent no-op, identity matrix. Matches Chrome
+    // BaseRenderingContext2D::DrawElementInternal (rect_f.IsEmpty() falls through to
+    // DOMMatrix::Create()). Deliberately diverges from drawImage 9-arg's normalizeRect()
+    // mirroring for negative widths because the spec PR (whatwg/html#11588) is silent
+    // and Chrome is the de-facto reference.
+    if (!std::isfinite(dx) || !std::isfinite(dy))
+        return DOMMatrix::create(TransformationMatrix { }, DOMMatrixReadOnly::Is2D::Yes);
+    if (explicitDestSize) {
+        if (!std::isfinite(explicitDestSize->width()) || !std::isfinite(explicitDestSize->height()))
+            return DOMMatrix::create(TransformationMatrix { }, DOMMatrixReadOnly::Is2D::Yes);
+        if (explicitDestSize->width() <= 0 || explicitDestSize->height() <= 0)
+            return DOMMatrix::create(TransformationMatrix { }, DOMMatrixReadOnly::Is2D::Yes);
+    }
+
+    auto& boxSize = record->state().boxSize;
+    auto destSize = explicitDestSize.value_or(boxSize);
+
     // Replay. The canvas's current CTM is already baked into drawingContext()'s state; we
-    // clip in canvas coords first, then translate, then replay the (child-local) display list.
+    // clip in canvas coords first, then translate the replay origin, then (when scaling)
+    // scale child-local units into canvas-grid units, then replay the display list.
     if (auto* context = drawingContext()) {
         GraphicsContextStateSaver saver(*context);
-        auto& boxSize = record->state().boxSize;
-        FloatRect destRect { static_cast<float>(dx), static_cast<float>(dy), boxSize.width(), boxSize.height() };
+        FloatRect destRect { static_cast<float>(dx), static_cast<float>(dy), destSize.width(), destSize.height() };
         context->clip(destRect);
         context->translate(static_cast<float>(dx), static_cast<float>(dy));
+        if (explicitDestSize && boxSize.width() > 0 && boxSize.height() > 0) {
+            float sx = destSize.width() / boxSize.width();
+            float sy = destSize.height() / boxSize.height();
+            if (sx != 1.0f || sy != 1.0f)
+                context->scale(FloatSize { sx, sy });
+        }
         context->drawDisplayList(record->displayList());
         didDraw(destRect);
     }
 
-    // TB1b returns identity. TB3a/issue #8 returns the real alignment matrix.
+    // TB1b/TB2a return identity. TB3a (issue #8) returns the real alignment matrix and
+    // must cover the 4-arg destination-scale case.
     return DOMMatrix::create(TransformationMatrix { }, DOMMatrixReadOnly::Is2D::Yes);
 }
 

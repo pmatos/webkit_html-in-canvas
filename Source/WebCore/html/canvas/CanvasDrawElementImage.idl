@@ -24,10 +24,11 @@
  */
 
 // https://github.com/whatwg/html/pull/11588 — html-in-canvas
-// TB1b: 2-arg Element overload only. The (Element or ElementImage) union plus
-// 4/6/8-arg overloads land in TB6/TB2a/TB2b.
+// TB1b: 2-arg Element overload. TB2a: 4-arg overload (destination scale).
+// (Element or ElementImage) union plus 6/8-arg overloads land in TB6/TB2b.
 [
     EnabledBySetting=CanvasDrawElementEnabled
 ] interface mixin CanvasDrawElementImage {
     [RaisesException] DOMMatrix drawElementImage(Element element, unrestricted double dx, unrestricted double dy);
+    [RaisesException] DOMMatrix drawElementImage(Element element, unrestricted double dx, unrestricted double dy, unrestricted double dwidth, unrestricted double dheight);
 };

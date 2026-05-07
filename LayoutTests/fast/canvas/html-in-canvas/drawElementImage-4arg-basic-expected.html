@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<title>Reference: 25x25 red at (10,10) and 100x100 red at (60,60) on a 200x200 white canvas</title>
+<style>
+  body { margin: 0; }
+  canvas { width: 200px; height: 200px; background: white; }
+</style>
+<canvas id="c" width="200" height="200"></canvas>
+<script>
+const ctx = document.getElementById("c").getContext("2d");
+ctx.fillStyle = "red";
+ctx.fillRect(10, 10, 25, 25);
+ctx.fillRect(60, 60, 100, 100);
+</script>

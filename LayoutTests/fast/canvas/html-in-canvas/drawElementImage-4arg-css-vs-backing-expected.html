@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<title>Reference: 200x200 grid red at (100, 100) on a 400x400-backing / 200x200-CSS canvas</title>
+<style>
+  body { margin: 0; }
+  canvas { width: 200px; height: 200px; background: white; }
+</style>
+<canvas id="c" width="400" height="400"></canvas>
+<script>
+const ctx = document.getElementById("c").getContext("2d");
+ctx.fillStyle = "red";
+ctx.fillRect(100, 100, 200, 200);
+</script>
