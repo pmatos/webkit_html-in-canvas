@@ -1,0 +1,5 @@
+
+FAIL snapshot count reflects direct children after paint assert_equals: two direct children -> two snapshots after paint expected 2 but got 0
+FAIL canvas resize clears snapshots, next paint re-records assert_equals: expected 2 but got 0
+FAIL removing a direct child purges its snapshot assert_equals: expected 2 but got 0
+

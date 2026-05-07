@@ -526,6 +526,7 @@ enum ContentsFormat {
 
     // <canvas layoutsubtree> carry-bit testing.
     boolean elementIsInCanvasSubtree(Element element);
+    unsigned long canvasChildSnapshotCount(HTMLCanvasElement canvas);
 
     undefined markFrontBufferVolatile(Element element);
     boolean isFullyActive(Document document);

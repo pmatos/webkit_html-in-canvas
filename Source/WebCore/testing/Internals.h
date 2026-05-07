@@ -233,6 +233,7 @@ public:
     bool NODELETE hasPausedImageAnimations(Element&);
     bool NODELETE effectiveLangKnownToMatchDocumentElement(Element&);
     bool NODELETE elementIsInCanvasSubtree(Element&);
+    unsigned long NODELETE canvasChildSnapshotCount(HTMLCanvasElement&);
     void markFrontBufferVolatile(Element&);
 
     bool isFullyActive(Document&);

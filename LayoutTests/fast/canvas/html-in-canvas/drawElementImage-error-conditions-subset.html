@@ -1,0 +1,53 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>drawElementImage minimum eligibility checks (TB1b)</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<body>
+<canvas id="canvas-no-layoutsubtree"></canvas>
+<canvas id="canvas-yes-layoutsubtree" layoutsubtree>
+    <div id="direct-child">
+        <span id="grandchild"></span>
+    </div>
+</canvas>
+<canvas id="canvas-other" layoutsubtree>
+    <div id="child-of-other"></div>
+</canvas>
+<script>
+function ctx(id) { return document.getElementById(id).getContext("2d"); }
+function el(id) { return document.getElementById(id); }
+
+test(() => {
+    assert_true("drawElementImage" in ctx("canvas-yes-layoutsubtree"),
+        "drawElementImage is exposed on CanvasRenderingContext2D when CanvasDrawElementEnabled is true");
+}, "IDL: drawElementImage method is exposed under the runtime preference");
+
+test(() => {
+    assert_throws_dom("InvalidStateError", () => {
+        ctx("canvas-no-layoutsubtree").drawElementImage(el("direct-child"), 0, 0);
+    });
+}, "throws InvalidStateError when the canvas does not have the layoutsubtree attribute");
+
+test(() => {
+    assert_throws_dom("InvalidStateError", () => {
+        ctx("canvas-yes-layoutsubtree").drawElementImage(el("grandchild"), 0, 0);
+    });
+}, "throws InvalidStateError when the element is not a direct child of the canvas");
+
+test(() => {
+    assert_throws_dom("InvalidStateError", () => {
+        ctx("canvas-yes-layoutsubtree").drawElementImage(el("child-of-other"), 0, 0);
+    });
+}, "throws InvalidStateError when the element is a child of a different canvas");
+
+test(() => {
+    // Resize clears all snapshots; before the next paint runs, no record exists for any direct
+    // child. This produces a deterministic "no snapshot" condition regardless of whether paint
+    // happened earlier.
+    const canvas = document.getElementById("canvas-yes-layoutsubtree");
+    canvas.width = canvas.width + 1;
+    assert_throws_dom("InvalidStateError", () => {
+        canvas.getContext("2d").drawElementImage(el("direct-child"), 0, 0);
+    });
+}, "throws InvalidStateError when no snapshot has been recorded (post-resize, pre-paint)");
+</script>
+</body>

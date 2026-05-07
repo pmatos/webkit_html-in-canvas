@@ -1455,6 +1455,7 @@ set(WebCore_NON_SVG_IDL_FILES
 
     html/canvas/CanvasCompositing.idl
     html/canvas/CanvasDirection.idl
+    html/canvas/CanvasDrawElementImage.idl
     html/canvas/CanvasDrawImage.idl
     html/canvas/CanvasDrawPath.idl
     html/canvas/CanvasFillRule.idl

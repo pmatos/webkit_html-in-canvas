@@ -1708,6 +1708,7 @@ html/ValidatedFormListedElement.cpp
 html/ValidationMessage.cpp @header:RenderStyleGetters
 html/WeekInputType.cpp
 html/canvas/ANGLEInstancedArrays.cpp
+html/canvas/CanvasChildPaintRecord.cpp
 html/canvas/CanvasFilterContextSwitcher.cpp
 html/canvas/CanvasGradient.cpp
 html/canvas/CanvasLayerContextSwitcher.cpp

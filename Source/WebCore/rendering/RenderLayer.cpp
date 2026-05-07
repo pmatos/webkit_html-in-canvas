@@ -76,6 +76,8 @@
 #include "Gradient.h"
 #include "GraphicsContext.h"
 #include "GraphicsLayer.h"
+#include "CanvasChildPaintRecord.h"
+#include "DisplayListRecorderImpl.h"
 #include "HTMLCanvasElement.h"
 #include "HTMLFormControlElement.h"
 #include "HTMLFrameElement.h"
@@ -4029,9 +4031,16 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
 
     // When the layer's renderer is a <canvas layoutsubtree>, propagate
     // PaintBehavior::CanvasSubtreeRecord to every descendant layer paint so they
-    // suppress their on-screen draw.
+    // suppress their on-screen draw, AND route each direct-child layer's paint into
+    // a DisplayList::RecorderImpl. The bit is CLEARED on the recording PaintInfo so
+    // descendants don't re-trigger the suppression early-return at RenderBlock::paint
+    // and actually paint into the recorder. Cross-origin iframe content is silently
+    // omitted by the existing RenderWidget::paintContents same-origin gate (TB1a),
+    // which is independent of CanvasSubtreeRecord.
+    CheckedPtr canvas = dynamicDowncast<RenderHTMLCanvas>(renderer());
+    bool isLayoutSubtreeCanvas = canvas && canvas->canHaveChildren();
     auto childPaintingInfo = paintingInfo;
-    if (CheckedPtr canvas = dynamicDowncast<RenderHTMLCanvas>(renderer()); canvas && canvas->canHaveChildren())
+    if (isLayoutSubtreeCanvas)
         childPaintingInfo.paintBehavior.add(PaintBehavior::CanvasSubtreeRecord);
 
     for (auto* childLayer : layerIterator) {
@@ -4041,6 +4050,39 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
             if (childLayer->renderer().isViewTransitionPseudo())
                 continue;
         }
+
+        if (isLayoutSubtreeCanvas) {
+            auto* renderer = dynamicDowncast<RenderBox>(childLayer->renderer());
+            auto* element = renderer ? renderer->element() : nullptr;
+            if (!element)
+                continue;
+
+            auto borderBox = renderer->borderBoxRect();
+            // RecorderImpl requires a "clean" initial state (DisplayListRecorder.cpp:57
+            // asserts !state.changes()). Default-construct rather than inheriting the
+            // screen context's state — descendant paint emits its own state-change items
+            // (fillStyle / strokeStyle / etc.) into the recorder, which the replay then
+            // applies on top of the canvas's current state.
+            DisplayList::RecorderImpl recorder({ }, FloatRect { borderBox }, AffineTransform { });
+
+            auto recordingInfo = paintingInfo;
+            recordingInfo.paintBehavior.remove(PaintBehavior::CanvasSubtreeRecord);
+
+            childLayer->paintLayer(recorder, recordingInfo, paintFlags);
+
+            auto displayList = recorder.takeDisplayList();
+            auto& canvasElement = canvas->canvasElement();
+            CanvasChildPaintState state {
+                FloatSize { borderBox.size() },
+                FloatSize { canvasElement.size() },
+                renderer->style().usedZoom(),
+            };
+            canvasElement.setCanvasChildPaintRecord(
+                element->nodeIdentifier(),
+                makeUnique<CanvasChildPaintRecord>(WTF::move(displayList), state));
+            continue;
+        }
+
         childLayer->paintLayer(context, childPaintingInfo, paintFlags);
     }
 }

@@ -1613,6 +1613,40 @@ ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(CanvasImageSource&& im
     );
 }
 
+ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImage(Element& element, double dx, double dy)
+{
+    // <canvas layoutsubtree> snapshot replay (TB1b minimum eligibility — TB4 will add the
+    // full validator). Order matches Blink's VerifyDrawElementImageEligibility.
+    RefPtr canvasElement = dynamicDowncast<HTMLCanvasElement>(canvasBase());
+    if (!canvasElement)
+        return Exception { ExceptionCode::InvalidStateError, "drawElementImage requires an HTMLCanvasElement context"_s };
+
+    if (!canvasElement->hasAttributeWithoutSynchronization(HTMLNames::layoutsubtreeAttr))
+        return Exception { ExceptionCode::InvalidStateError, "Canvas is not in layoutsubtree mode"_s };
+
+    if (element.parentNode() != canvasElement.get())
+        return Exception { ExceptionCode::InvalidStateError, "Element is not a direct child of the canvas"_s };
+
+    auto* record = canvasElement->canvasChildPaintRecord(element.nodeIdentifier());
+    if (!record)
+        return Exception { ExceptionCode::InvalidStateError, "No snapshot recorded for element"_s };
+
+    // Replay. The canvas's current CTM is already baked into drawingContext()'s state; we
+    // clip in canvas coords first, then translate, then replay the (child-local) display list.
+    if (auto* context = drawingContext()) {
+        GraphicsContextStateSaver saver(*context);
+        auto& boxSize = record->state().boxSize;
+        FloatRect destRect { static_cast<float>(dx), static_cast<float>(dy), boxSize.width(), boxSize.height() };
+        context->clip(destRect);
+        context->translate(static_cast<float>(dx), static_cast<float>(dy));
+        context->drawDisplayList(record->displayList());
+        didDraw(destRect);
+    }
+
+    // TB1b returns identity. TB3a/issue #8 returns the real alignment matrix.
+    return DOMMatrix::create(TransformationMatrix { }, DOMMatrixReadOnly::Is2D::Yes);
+}
+
 ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(CanvasImageSource&& image, float dx, float dy, float dw, float dh)
 {
     return WTF::switchOn(image,

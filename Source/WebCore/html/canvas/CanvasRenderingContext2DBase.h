@@ -60,6 +60,7 @@ class CachedImage;
 class CanvasLayerContextSwitcher;
 class CanvasGradient;
 class DOMMatrix;
+class Element;
 class FloatRect;
 class GraphicsContext;
 class ImageData;
@@ -211,6 +212,9 @@ public:
     ExceptionOr<void> drawImage(CanvasImageSource&&, float dx, float dy);
     ExceptionOr<void> drawImage(CanvasImageSource&&, float dx, float dy, float dw, float dh);
     ExceptionOr<void> drawImage(CanvasImageSource&&, float sx, float sy, float sw, float sh, float dx, float dy, float dw, float dh);
+
+    // <canvas layoutsubtree> snapshot replay (TB1b). 4/6/8-arg overloads land in TB2a/TB2b.
+    ExceptionOr<Ref<DOMMatrix>> drawElementImage(Element&, double dx, double dy);
 
     void clearCanvas();
 

@@ -81,6 +81,7 @@ CanvasRenderingContext2D includes CanvasDrawPath;
 CanvasRenderingContext2D includes CanvasUserInterface;
 CanvasRenderingContext2D includes CanvasText;
 CanvasRenderingContext2D includes CanvasDrawImage;
+CanvasRenderingContext2D includes CanvasDrawElementImage;
 CanvasRenderingContext2D includes CanvasImageData;
 CanvasRenderingContext2D includes CanvasPathDrawingStyles;
 CanvasRenderingContext2D includes CanvasTextDrawingStyles;

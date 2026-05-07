@@ -1576,6 +1576,11 @@ bool Internals::elementIsInCanvasSubtree(Element& element)
     return element.isInCanvasSubtree();
 }
 
+unsigned long Internals::canvasChildSnapshotCount(HTMLCanvasElement& canvas)
+{
+    return canvas.canvasChildPaintRecordCount();
+}
+
 bool Internals::isFullyActive(Document& document)
 {
     return document.isFullyActive();

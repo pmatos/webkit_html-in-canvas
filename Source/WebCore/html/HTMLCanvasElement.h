@@ -30,13 +30,16 @@
 #include <JavaScriptCore/JSCJSValue.h>
 #include <WebCore/ActiveDOMObject.h>
 #include <WebCore/CanvasBase.h>
+#include <WebCore/CanvasChildPaintRecord.h>
 #include <WebCore/Document.h>
 #include <WebCore/FloatRect.h>
 #include <WebCore/GraphicsTypes.h>
 #include <WebCore/HTMLElement.h>
+#include <WebCore/NodeIdentifier.h>
 #include <WebCore/PlatformDynamicRangeLimit.h>
 #include <memory>
 #include <wtf/Forward.h>
+#include <wtf/HashMap.h>
 
 #if ENABLE(WEBGL)
 #include <WebCore/WebGLContextAttributes.h>
@@ -76,6 +79,14 @@ public:
 
     WEBCORE_EXPORT ExceptionOr<void> setWidth(unsigned);
     WEBCORE_EXPORT ExceptionOr<void> setHeight(unsigned);
+
+    // <canvas layoutsubtree> snapshot pipeline (TB1b). Populated during paint by the
+    // recording walk in RenderLayer::paintList; consumed by drawElementImage.
+    size_t canvasChildPaintRecordCount() const { return m_canvasChildPaintRecords.size(); }
+    CanvasChildPaintRecord* canvasChildPaintRecord(NodeIdentifier);
+    void setCanvasChildPaintRecord(NodeIdentifier, std::unique_ptr<CanvasChildPaintRecord>);
+    void clearCanvasChildPaintRecord(NodeIdentifier);
+    void clearAllCanvasChildPaintRecords();
 
     CanvasRenderingContext* renderingContext() const final { return m_context.get(); }
     ExceptionOr<std::optional<RenderingContext>> getContext(JSC::JSGlobalObject&, const String& contextId, FixedVector<JSC::Strong<JSC::Unknown>>&& arguments);
@@ -177,6 +188,7 @@ private:
     ScriptExecutionContext* canvasBaseScriptExecutionContext() const final { return HTMLElement::scriptExecutionContext(); }
 
     void didMoveToNewDocument(Document& oldDocument, Document& newDocument) final;
+    void childrenChanged(const ChildChange&) final;
 
     std::optional<FloatRect> computeDirtyRectangleIfNeeded(const std::optional<FloatRect>&) const;
 
@@ -189,6 +201,8 @@ private:
     std::unique_ptr<CanvasRenderingContext> m_context;
     PlatformDynamicRangeLimit m_dynamicRangeLimit { PlatformDynamicRangeLimit::initialValue() };
     mutable RefPtr<Image> m_copiedImage; // FIXME: This is temporary for platforms that have to copy the image buffer to render (and for CSSCanvasValue).
+
+    HashMap<NodeIdentifier, std::unique_ptr<CanvasChildPaintRecord>> m_canvasChildPaintRecords;
 };
 
 WebCoreOpaqueRoot root(HTMLCanvasElement*);

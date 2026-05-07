@@ -1,0 +1,3 @@
+
+FAIL drawElementImage returns an identity DOMMatrix in TB1b promise_test: Unhandled rejection with value: object "InvalidStateError: No snapshot recorded for element"
+

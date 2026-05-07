@@ -31,6 +31,7 @@
 #include "BitmapImage.h"
 #include "Blob.h"
 #include "BlobCallback.h"
+#include "CanvasChildPaintRecord.h"
 #include "CanvasGradient.h"
 #include "CanvasPattern.h"
 #include "CanvasRenderingContext2D.h"
@@ -39,6 +40,7 @@
 #include "DocumentQuirks.h"
 #include "DocumentView.h"
 #include "ElementInlines.h"
+#include "ElementChildIteratorInlines.h"
 #include "EventNames.h"
 #include "FrameDestructionObserverInlines.h"
 #include "GPU.h"
@@ -570,6 +572,42 @@ void HTMLCanvasElement::didDraw(const std::optional<FloatRect>& rect, ShouldAppl
     CanvasBase::didDraw(rect, shouldApplyPostProcessingToDirtyRect);
 }
 
+CanvasChildPaintRecord* HTMLCanvasElement::canvasChildPaintRecord(NodeIdentifier id)
+{
+    auto it = m_canvasChildPaintRecords.find(id);
+    return it == m_canvasChildPaintRecords.end() ? nullptr : it->value.get();
+}
+
+void HTMLCanvasElement::setCanvasChildPaintRecord(NodeIdentifier id, std::unique_ptr<CanvasChildPaintRecord> record)
+{
+    m_canvasChildPaintRecords.set(id, WTF::move(record));
+}
+
+void HTMLCanvasElement::clearCanvasChildPaintRecord(NodeIdentifier id)
+{
+    m_canvasChildPaintRecords.remove(id);
+}
+
+void HTMLCanvasElement::clearAllCanvasChildPaintRecords()
+{
+    m_canvasChildPaintRecords.clear();
+}
+
+void HTMLCanvasElement::childrenChanged(const ChildChange& change)
+{
+    HTMLElement::childrenChanged(change);
+
+    if (m_canvasChildPaintRecords.isEmpty())
+        return;
+
+    HashSet<NodeIdentifier> live;
+    for (auto& child : childrenOfType<Element>(*this))
+        live.add(child.nodeIdentifier());
+    m_canvasChildPaintRecords.removeIf([&](auto& entry) {
+        return !live.contains(entry.key);
+    });
+}
+
 void HTMLCanvasElement::didUpdateSizeProperties()
 {
     if (m_ignoreDidUpdateSizeProperties)
@@ -581,6 +619,8 @@ void HTMLCanvasElement::didUpdateSizeProperties()
     IntSize oldSize = size();
     IntSize newSize(w, h);
     bool sizeChanged = oldSize != newSize;
+    if (sizeChanged)
+        clearAllCanvasChildPaintRecords();
     CanvasBase::setSize(newSize);
     clearCopiedImage();
     if (m_context)

@@ -38,6 +38,7 @@ list(APPEND TestJavaScriptCore_LIBRARIES
 
 # TestWebCore
 list(APPEND TestWebCore_SOURCES
+    Tests/WebCore/CanvasChildSnapshotStore.cpp
     Tests/WebCore/CanvasSubtreeFlag.cpp
     Tests/WebCore/UserAgentQuirks.cpp
 
