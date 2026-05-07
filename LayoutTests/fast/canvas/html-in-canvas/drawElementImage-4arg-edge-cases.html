@@ -37,6 +37,10 @@ promise_test(async t => {
     assertNoOpReturnsIdentity("zero dheight",     0, 0, 50, 0);
     assertNoOpReturnsIdentity("negative dwidth",  0, 0, -10, 50);
     assertNoOpReturnsIdentity("negative dheight", 0, 0, 50, -10);
+    // Sub-epsilon positive values: Chrome clamps these to zero in gfx::SizeF, so we
+    // replicate the clamp (8 * FLT_EPSILON ≈ 9.5e-7). 1e-10 is well below the threshold.
+    assertNoOpReturnsIdentity("sub-epsilon dwidth",  0, 0, 1e-10, 50);
+    assertNoOpReturnsIdentity("sub-epsilon dheight", 0, 0, 50, 1e-10);
     assertNoOpReturnsIdentity("NaN dwidth",       0, 0, NaN, 50);
     assertNoOpReturnsIdentity("NaN dheight",      0, 0, 50, NaN);
     assertNoOpReturnsIdentity("Infinity dwidth",  0, 0, Infinity, 50);

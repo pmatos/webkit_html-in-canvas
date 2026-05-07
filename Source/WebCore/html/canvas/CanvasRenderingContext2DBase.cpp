@@ -91,6 +91,7 @@
 #include "TextUtil.h"
 #include "WebCodecsVideoFrame.h"
 #include <JavaScriptCore/ConsoleTypes.h>
+#include <limits>
 #include <wtf/CheckedArithmetic.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/TZoneMallocInlines.h>
@@ -1645,18 +1646,23 @@ ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImageIntern
     if (!record)
         return Exception { ExceptionCode::InvalidStateError, "No snapshot recorded for element"_s };
 
-    // Geometry validation. Non-finite dx/dy and (when explicit) non-finite/zero/negative
-    // dwidth/dheight → silent no-op, identity matrix. Matches Chrome
-    // BaseRenderingContext2D::DrawElementInternal (rect_f.IsEmpty() falls through to
-    // DOMMatrix::Create()). Deliberately diverges from drawImage 9-arg's normalizeRect()
-    // mirroring for negative widths because the spec PR (whatwg/html#11588) is silent
-    // and Chrome is the de-facto reference.
+    // Geometry validation. Non-finite dx/dy and (when explicit) non-finite/zero/negative or
+    // sub-epsilon-positive dwidth/dheight → silent no-op, identity matrix.
+    //
+    // Matches Chrome's BaseRenderingContext2D::DrawElementInternal (rect_f.IsEmpty() falls
+    // through to DOMMatrix::Create()). The sub-epsilon clamp is an incidental side-effect
+    // of Chrome's gfx::SizeF constructor, which forces values below 8*FLT_EPSILON to zero;
+    // we replicate it explicitly so that visually-degenerate destination sizes route through
+    // the same no-op path on both engines. Deliberately diverges from drawImage 9-arg's
+    // normalizeRect() mirroring for negative widths because the spec PR (whatwg/html#11588)
+    // is silent and Chrome is the de-facto reference.
     if (!std::isfinite(dx) || !std::isfinite(dy))
         return DOMMatrix::create(TransformationMatrix { }, DOMMatrixReadOnly::Is2D::Yes);
     if (explicitDestSize) {
         if (!std::isfinite(explicitDestSize->width()) || !std::isfinite(explicitDestSize->height()))
             return DOMMatrix::create(TransformationMatrix { }, DOMMatrixReadOnly::Is2D::Yes);
-        if (explicitDestSize->width() <= 0 || explicitDestSize->height() <= 0)
+        constexpr float kMinDestExtent = 8.0f * std::numeric_limits<float>::epsilon();
+        if (explicitDestSize->width() < kMinDestExtent || explicitDestSize->height() < kMinDestExtent)
             return DOMMatrix::create(TransformationMatrix { }, DOMMatrixReadOnly::Is2D::Yes);
     }
 
