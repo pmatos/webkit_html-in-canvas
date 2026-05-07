@@ -1,0 +1,71 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>drawElementImage returned matrix aligns DOM hit-testing with drawn pixels</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<style>
+  body { margin: 0; }
+  #cvs { position: absolute; left: 0; top: 0; }
+  #el { width: 20px; height: 20px; background: rgba(0, 0, 255, 0.3); }
+</style>
+<body>
+<canvas id="cvs" style="width: 200px; height: 200px;" width="200" height="200" layoutsubtree>
+  <div id="el"></div>
+</canvas>
+<script>
+const cvs = document.getElementById("cvs");
+const el = document.getElementById("el");
+const ctx = cvs.getContext("2d");
+
+function nextPaint() {
+    return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+
+// After assigning the returned alignment matrix to el.style.transform, the element's
+// DOM hit-test region must coincide with where the canvas drew its pixels. Pick a
+// point inside the drawn pixel region and assert elementFromPoint resolves to el.
+
+promise_test(async t => {
+    t.add_cleanup(() => {
+        el.style.transform = "";
+        el.style.transformOrigin = "";
+        ctx.reset();
+    });
+    await nextPaint();
+
+    // 5-arg overload: draw the 20x20 element scaled to 40x40 at (50, 30). Hit-test the
+    // centre of the drawn 40x40 box at canvas-coords (70, 50) → client coords (70, 50)
+    // (canvas is at the top-left of the viewport).
+    const m = ctx.drawElementImage(el, 50, 30, 40, 40);
+    el.style.transformOrigin = "0 0";
+    el.style.transform = m.toString();
+    await nextPaint();
+
+    assert_equals(document.elementFromPoint(70, 50), el,
+        "centre of drawn 40x40 region hit-tests to the drawn element");
+}, "5-arg drawElementImage: alignment matrix puts DOM hit-test on top of drawn pixels");
+
+promise_test(async t => {
+    t.add_cleanup(() => {
+        el.style.transform = "";
+        el.style.transformOrigin = "";
+        ctx.reset();
+    });
+    el.style.transformOrigin = "10px 10px";
+    await nextPaint();
+
+    // 3-arg overload with a non-default transform-origin and a CTM rotation.
+    ctx.save();
+    ctx.translate(60, 60);
+    ctx.rotate(Math.PI / 4);
+    const m = ctx.drawElementImage(el, 0, 0);
+    ctx.restore();
+    el.style.transform = m.toString();
+    await nextPaint();
+
+    // After rotate(45deg) about origin (10,10) at canvas position (60,60), the centre
+    // of the original 20x20 element at element-local (10,10) maps to canvas (60, 60).
+    assert_equals(document.elementFromPoint(60, 60), el,
+        "centre of rotated element hit-tests to the drawn element");
+}, "3-arg drawElementImage with rotation + transform-origin: hit-test aligns");
+</script>
+</body>

@@ -91,7 +91,11 @@ TEST(CanvasChildSnapshotStore, RecordSetGetClear)
     EXPECT_EQ(canvas->canvasChildPaintRecordCount(), 0u);
 }
 
-TEST(CanvasChildSnapshotStore, ClearAllOnResize)
+// Backing-store resize (canvas.width attribute change) must NOT invalidate the recorded
+// child paint. Pinned by wpt_internal draw-element-image-returned-matrix.html test 9
+// ("Draw transform should account for canvas pixel scale"), which mutates canvas.width
+// and immediately calls drawElementImage with no frame await.
+TEST(CanvasChildSnapshotStore, BackingStoreResizeKeepsRecords)
 {
     auto document = createDocument();
     auto canvas = HTMLCanvasElement::create(document);
@@ -109,8 +113,8 @@ TEST(CanvasChildSnapshotStore, ClearAllOnResize)
     auto result = canvas->setWidth(200);
     EXPECT_FALSE(result.hasException()) << "setWidth must not throw on a free-standing canvas";
 
-    EXPECT_EQ(canvas->canvasChildPaintRecordCount(), 0u)
-        << "canvas resize must clear all child snapshots";
+    EXPECT_EQ(canvas->canvasChildPaintRecordCount(), 2u)
+        << "backing-store-only resize must preserve child snapshots";
 }
 
 TEST(CanvasChildSnapshotStore, ChildrenChangedRemovesStaleEntries)

@@ -54,6 +54,7 @@
 #include "ColorSerialization.h"
 #include "DOMMatrix.h"
 #include "DOMMatrix2DInit.h"
+#include "DrawElementImageMath.h"
 #include "FloatQuad.h"
 #include "FontCascadeFonts.h"
 #include "FontCascadeInlines.h"
@@ -1687,9 +1688,40 @@ ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImageIntern
         didDraw(destRect);
     }
 
-    // TB1b/TB2a return identity. TB3a (issue #8) returns the real alignment matrix and
-    // must cover the 4-arg destination-scale case.
-    return DOMMatrix::create(TransformationMatrix { }, DOMMatrixReadOnly::Is2D::Yes);
+    // T_align = T_origin^-1 . S_cssToGrid^-1 . T_draw . S_cssToGrid . T_origin.
+    // T_draw is the same chain we just replayed against drawingContext(): current CTM,
+    // then translate(dx, dy), then (when explicit) scale to the destination size. We
+    // build it from state().transform rather than reading it back from the
+    // GraphicsContext after the StateSaver restored it.
+    AffineTransform drawTransform = state().transform;
+    drawTransform.translate(dx, dy);
+    if (explicitDestSize && boxSize.width() > 0 && boxSize.height() > 0)
+        drawTransform.scaleNonUniform(destSize.width() / boxSize.width(), destSize.height() / boxSize.height());
+
+    // S_cssToGrid is read live from the canvas at draw time: corpus test 9 mutates
+    // canvas.width/height between paint and draw without a frame await, so the value
+    // captured in the snapshot record (canvasBackingStoreSize) cannot be authoritative.
+    FloatSize cssToGridScale { 1, 1 };
+    if (CheckedPtr canvasRenderer = canvasElement->renderBox()) {
+        float zoom = canvasRenderer->style().usedZoom();
+        FloatSize canvasUnzoomedCSSSize {
+            canvasRenderer->size().width() / zoom,
+            canvasRenderer->size().height() / zoom
+        };
+        if (canvasUnzoomedCSSSize.width() > 0 && canvasUnzoomedCSSSize.height() > 0) {
+            cssToGridScale = {
+                static_cast<float>(canvasElement->size().width()) / canvasUnzoomedCSSSize.width(),
+                static_cast<float>(canvasElement->size().height()) / canvasUnzoomedCSSSize.height()
+            };
+        }
+    }
+
+    auto matrix = computeDrawElementAlignmentMatrix({
+        record->state().transformOrigin,
+        cssToGridScale,
+        drawTransform,
+    });
+    return DOMMatrix::create(WTF::move(matrix), DOMMatrixReadOnly::Is2D::Yes);
 }
 
 ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(CanvasImageSource&& image, float dx, float dy, float dw, float dh)

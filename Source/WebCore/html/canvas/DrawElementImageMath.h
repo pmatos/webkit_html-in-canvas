@@ -25,46 +25,25 @@
 
 #pragma once
 
+#include "AffineTransform.h"
 #include "FloatPoint.h"
 #include "FloatSize.h"
-#include <wtf/Ref.h>
-#include <wtf/TZoneMalloc.h>
+#include "TransformationMatrix.h"
 
 namespace WebCore {
 
-namespace DisplayList {
-class DisplayList;
-}
-
-// Metadata captured at recording time alongside the DisplayList. Consumed at replay time
-// (CanvasRenderingContext2DBase::drawElementImage) and by DrawElementImageMath when
-// building the T_align matrix returned to script.
-struct CanvasChildPaintState {
-    FloatSize boxSize; // child's CSS border-box size
-    FloatSize canvasBackingStoreSize; // canvas.width/height in device px
-    float childZoom { 1.0f }; // CSS effective zoom on the child
-    FloatPoint transformOrigin; // element transform-origin, unzoomed CSS px, element-local
-};
-
-// Snapshot of one direct child of a <canvas layoutsubtree>: a recorded display list plus
-// the metadata needed to project it onto the canvas grid at replay time.
+// Inputs for the drawElementImage alignment-matrix computation.
 //
-// Thread-safety: the wrapped DisplayList is main-thread-only (see DisplayList.h). TB7's
-// ElementImage transfer will introduce a serialised companion form rather than retrofit
-// this struct.
-class CanvasChildPaintRecord {
-    WTF_MAKE_TZONE_ALLOCATED(CanvasChildPaintRecord);
-    WTF_MAKE_NONCOPYABLE(CanvasChildPaintRecord);
-public:
-    CanvasChildPaintRecord(Ref<const DisplayList::DisplayList>&&, CanvasChildPaintState);
-    ~CanvasChildPaintRecord();
-
-    const DisplayList::DisplayList& displayList() const { return m_displayList.get(); }
-    const CanvasChildPaintState& state() const { return m_state; }
-
-private:
-    Ref<const DisplayList::DisplayList> m_displayList;
-    CanvasChildPaintState m_state;
+// The returned matrix is the value the caller assigns to `el.style.transform`
+// to align the element's DOM hit-test region with its drawn-on-canvas pixels.
+//
+// Formula: T_align = T_origin^-1 . S_cssToGrid^-1 . T_draw . S_cssToGrid . T_origin
+struct DrawElementImageMathInputs {
+    FloatPoint transformOrigin; // element transform-origin, unzoomed CSS px, element-local
+    FloatSize cssToGridScale; // canvas.width / canvasUnzoomedCSSWidth (and same for height)
+    AffineTransform drawTransform; // CTM . T(dx, dy) . S(destScaleX, destScaleY)
 };
+
+WEBCORE_EXPORT TransformationMatrix computeDrawElementAlignmentMatrix(const DrawElementImageMathInputs&);
 
 } // namespace WebCore

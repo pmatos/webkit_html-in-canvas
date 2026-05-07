@@ -20,18 +20,24 @@ promise_test(async () => {
 }, "snapshot count reflects direct children after paint");
 
 promise_test(async () => {
+    // Backing-store-only resize (canvas.width attribute change) preserves the
+    // existing snapshots: the children's recorded paint is layout-driven, not
+    // backing-store-driven. Pinned by the wpt_internal corpus test
+    // draw-element-image-returned-matrix.html "Draw transform should account for
+    // canvas pixel scale", which mutates canvas.width and immediately calls
+    // drawElementImage with no frame await.
     const canvas = document.getElementById("c");
     await nextPaint();
     assert_equals(internals.canvasChildSnapshotCount(canvas), 2);
 
     canvas.width = canvas.width + 1;
-    assert_equals(internals.canvasChildSnapshotCount(canvas), 0,
-        "resize clears snapshots synchronously");
+    assert_equals(internals.canvasChildSnapshotCount(canvas), 2,
+        "backing-store resize preserves snapshots");
 
     await nextPaint();
     assert_equals(internals.canvasChildSnapshotCount(canvas), 2,
-        "next frame re-records");
-}, "canvas resize clears snapshots, next paint re-records");
+        "still two snapshots after next frame");
+}, "canvas backing-store resize preserves child snapshots");
 
 promise_test(async () => {
     const canvas = document.getElementById("c");

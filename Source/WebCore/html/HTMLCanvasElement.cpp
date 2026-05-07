@@ -619,8 +619,12 @@ void HTMLCanvasElement::didUpdateSizeProperties()
     IntSize oldSize = size();
     IntSize newSize(w, h);
     bool sizeChanged = oldSize != newSize;
-    if (sizeChanged)
-        clearAllCanvasChildPaintRecords();
+    // Backing-store-only resize (canvas.width / canvas.height attribute change) does not
+    // invalidate the recorded child paint: the children's display lists are layout-driven,
+    // not backing-store-driven. Clearing here would break wpt_internal corpus test
+    // draw-element-image-returned-matrix.html "Draw transform should account for canvas
+    // pixel scale", which mutates canvas.width synchronously and immediately calls
+    // drawElementImage. Layout-box changes invalidate via DOM/childrenChanged paths.
     CanvasBase::setSize(newSize);
     clearCopiedImage();
     if (m_context)

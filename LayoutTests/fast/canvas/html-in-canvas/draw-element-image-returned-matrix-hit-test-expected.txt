@@ -1,0 +1,4 @@
+
+PASS 5-arg drawElementImage: alignment matrix puts DOM hit-test on top of drawn pixels
+PASS 3-arg drawElementImage with rotation + transform-origin: hit-test aligns
+

@@ -4074,10 +4074,20 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
 
             auto displayList = recorder.takeDisplayList();
             auto& canvasElement = canvas->canvasElement();
+            float childZoom = renderer->style().usedZoom();
+            // computeTransformOrigin returns the origin in the same units as the
+            // bounding box passed in (zoomed CSS px). DrawElementImageMath wants
+            // unzoomed CSS px, so divide out the child's used zoom.
+            FloatPoint zoomedOrigin = Style::TransformResolver::computeTransformOrigin(renderer->style(), FloatRect { borderBox }).xy();
+            FloatPoint transformOrigin {
+                childZoom > 0 ? zoomedOrigin.x() / childZoom : zoomedOrigin.x(),
+                childZoom > 0 ? zoomedOrigin.y() / childZoom : zoomedOrigin.y(),
+            };
             CanvasChildPaintState state {
                 FloatSize { borderBox.size() },
                 FloatSize { canvasElement.size() },
-                renderer->style().usedZoom(),
+                childZoom,
+                transformOrigin,
             };
             canvasElement.setCanvasChildPaintRecord(
                 element->nodeIdentifier(),

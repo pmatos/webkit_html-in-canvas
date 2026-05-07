@@ -157,6 +157,15 @@ static bool shouldDisableMutationEvents(const std::string& pathOrURL)
         || pathContains(pathOrURL, "html/semantics/forms/the-select-element/");
 }
 
+static bool shouldEnableCanvasDrawElement(const std::string& pathOrURL)
+{
+    // Narrow scope to tests TB3a is responsible for. Broader corpus enrollment
+    // would expose unrelated failures from APIs not yet implemented (requestPaint,
+    // captureElementImage, ...) and a pre-existing crash in canvas-subtree
+    // hit-testing. Each subsequent slice extends this list.
+    return pathContains(pathOrURL, "wpt_internal/html/canvas/drawElementImage/draw-element-image-returned-matrix");
+}
+
 TestFeatures hardcodedFeaturesBasedOnPathForTest(const TestCommand& command)
 {
     TestFeatures features;
@@ -190,6 +199,8 @@ TestFeatures hardcodedFeaturesBasedOnPathForTest(const TestCommand& command)
         features.boolWebPreferenceFeatures.insert({ "UsesBackForwardCache", true });
     if (shouldDisableMutationEvents(command.pathOrURL))
         features.boolWebPreferenceFeatures.insert({ "MutationEventsEnabled", false });
+    if (shouldEnableCanvasDrawElement(command.pathOrURL))
+        features.boolWebPreferenceFeatures.insert({ "CanvasDrawElementEnabled", true });
 
     return features;
 }

@@ -1,5 +1,5 @@
 
 PASS snapshot count reflects direct children after paint
-PASS canvas resize clears snapshots, next paint re-records
+PASS canvas backing-store resize preserves child snapshots
 PASS removing a direct child purges its snapshot
 
