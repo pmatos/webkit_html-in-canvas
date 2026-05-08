@@ -52,4 +52,6 @@ typedef (
     [Conditional=MEDIA_STREAM, NewObject] MediaStream captureStream(optional double frameRequestRate);
 
     [CEReactions=NotNeeded, Reflect, EnabledBySetting=CanvasDrawElementEnabled] attribute boolean layoutSubtree;
+
+    [RaisesException, EnabledBySetting=CanvasDrawElementEnabled] DOMMatrix getElementTransform(Element element, DOMMatrix drawTransform);
 };

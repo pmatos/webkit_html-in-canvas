@@ -33,6 +33,7 @@
 #include "CanvasRenderingContext.h"
 #include "ContextDestructionObserverInlines.h"
 #include "Chrome.h"
+#include "DOMMatrix.h"
 #include "Document.h"
 #include "EventDispatcher.h"
 #include "GPU.h"
@@ -323,6 +324,16 @@ void OffscreenCanvas::convertToBlob(ImageEncodeOptions&& options, Ref<DeferredPr
     }
     Ref<Blob> blob = Blob::create(context.get(), WTF::move(blobData), encodingMIMEType);
     promise->resolveWithNewlyCreated<IDLInterface<Blob>>(WTF::move(blob));
+}
+
+ExceptionOr<Ref<DOMMatrix>> OffscreenCanvas::getElementTransform(Element&, DOMMatrix&)
+{
+    // OffscreenCanvas does not host a snapshot pipeline — TB1b records into
+    // HTMLCanvasElement::m_canvasChildPaintRecords during the main-thread paint walk.
+    // Until snapshots are propagated to OffscreenCanvas (open question §7 of the
+    // implementation report), eligibility always fails. Matches the InvalidStateError
+    // that drawElementImage throws for an OffscreenCanvasRenderingContext2D today.
+    return Exception { ExceptionCode::InvalidStateError, "OffscreenCanvas does not have a snapshot for the element"_s };
 }
 
 void OffscreenCanvas::didDraw(const std::optional<FloatRect>& rect, ShouldApplyPostProcessingToDirtyRect shouldApplyPostProcessingToDirtyRect)

@@ -37,8 +37,10 @@
 #include "CanvasRenderingContext2D.h"
 #include "CanvasRenderingContext2DSettings.h"
 #include "ContainerNodeInlines.h"
+#include "DOMMatrix.h"
 #include "DocumentQuirks.h"
 #include "DocumentView.h"
+#include "DrawElementImageMath.h"
 #include "ElementInlines.h"
 #include "ElementChildIteratorInlines.h"
 #include "EventNames.h"
@@ -591,6 +593,64 @@ void HTMLCanvasElement::clearCanvasChildPaintRecord(NodeIdentifier id)
 void HTMLCanvasElement::clearAllCanvasChildPaintRecords()
 {
     m_canvasChildPaintRecords.clear();
+}
+
+ExceptionOr<CanvasChildPaintRecord*> HTMLCanvasElement::validateChildForDrawElementImage(Element& element)
+{
+    // Order matches Blink's VerifyDrawElementImageEligibility. TB4 (#9) will replace
+    // this with the full validator.
+    if (!hasAttributeWithoutSynchronization(HTMLNames::layoutsubtreeAttr))
+        return Exception { ExceptionCode::InvalidStateError, "Canvas is not in layoutsubtree mode"_s };
+    if (element.parentNode() != this)
+        return Exception { ExceptionCode::InvalidStateError, "Element is not a direct child of the canvas"_s };
+    auto* record = canvasChildPaintRecord(element.nodeIdentifier());
+    if (!record)
+        return Exception { ExceptionCode::InvalidStateError, "No snapshot recorded for element"_s };
+    return record;
+}
+
+TransformationMatrix HTMLCanvasElement::computeAlignmentMatrixForChild(const CanvasChildPaintRecord& record, const AffineTransform& drawTransform) const
+{
+    // S_cssToGrid is read live: corpus test 9 mutates canvas.width between paint and draw,
+    // so capture-at-paint cannot be authoritative.
+    FloatSize cssToGridScale { 1, 1 };
+    if (CheckedPtr canvasRenderer = renderBox()) {
+        float zoom = canvasRenderer->style().usedZoom();
+        FloatSize canvasUnzoomedCSSSize {
+            canvasRenderer->size().width() / zoom,
+            canvasRenderer->size().height() / zoom
+        };
+        if (canvasUnzoomedCSSSize.width() > 0 && canvasUnzoomedCSSSize.height() > 0) {
+            cssToGridScale = {
+                static_cast<float>(size().width()) / canvasUnzoomedCSSSize.width(),
+                static_cast<float>(size().height()) / canvasUnzoomedCSSSize.height()
+            };
+        }
+    }
+
+    return computeDrawElementAlignmentMatrix({
+        record.state().transformOrigin,
+        cssToGridScale,
+        drawTransform,
+    });
+}
+
+ExceptionOr<Ref<DOMMatrix>> HTMLCanvasElement::getElementTransform(Element& element, DOMMatrix& drawTransform)
+{
+    auto recordOrException = validateChildForDrawElementImage(element);
+    if (recordOrException.hasException())
+        return recordOrException.releaseException();
+
+    // 2D projection of the input DOMMatrix. 3D draw transforms are not supported by
+    // DrawElementImageMath in this slice — the corpus tests are 2D-only and a future
+    // slice that admits 3D draw transforms will need an explicit signature change.
+    AffineTransform draw {
+        drawTransform.a(), drawTransform.b(),
+        drawTransform.c(), drawTransform.d(),
+        drawTransform.e(), drawTransform.f()
+    };
+    auto matrix = computeAlignmentMatrixForChild(*recordOrException.releaseReturnValue(), draw);
+    return DOMMatrix::create(WTF::move(matrix), DOMMatrixReadOnly::Is2D::Yes);
 }
 
 void HTMLCanvasElement::childrenChanged(const ChildChange& change)

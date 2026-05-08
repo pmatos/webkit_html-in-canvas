@@ -1,0 +1,62 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>getElementTransform synchronous error paths (TB3b)</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<body>
+<canvas id="canvas-no-layoutsubtree"></canvas>
+<canvas id="canvas-yes-layoutsubtree" layoutsubtree>
+    <div id="direct-child">
+        <span id="grandchild"></span>
+    </div>
+</canvas>
+<canvas id="canvas-other" layoutsubtree>
+    <div id="child-of-other"></div>
+</canvas>
+<canvas id="canvas-for-offscreen"></canvas>
+<script>
+function el(id) { return document.getElementById(id); }
+function canvas(id) { return el(id); }
+
+test(() => {
+    assert_true("getElementTransform" in canvas("canvas-yes-layoutsubtree"),
+        "getElementTransform is exposed on HTMLCanvasElement when CanvasDrawElementEnabled is true");
+}, "IDL: getElementTransform method is exposed under the runtime preference");
+
+test(() => {
+    assert_throws_dom("InvalidStateError", () => {
+        canvas("canvas-no-layoutsubtree").getElementTransform(el("direct-child"), new DOMMatrix());
+    });
+}, "throws InvalidStateError when the canvas does not have the layoutsubtree attribute");
+
+test(() => {
+    assert_throws_dom("InvalidStateError", () => {
+        canvas("canvas-yes-layoutsubtree").getElementTransform(el("grandchild"), new DOMMatrix());
+    });
+}, "throws InvalidStateError when the element is not a direct child of the canvas");
+
+test(() => {
+    assert_throws_dom("InvalidStateError", () => {
+        canvas("canvas-yes-layoutsubtree").getElementTransform(el("child-of-other"), new DOMMatrix());
+    });
+}, "throws InvalidStateError when the element is a child of a different canvas");
+
+test(() => {
+    // Pre-paint: no snapshot record exists for the direct child yet (the layout-test
+    // harness runs body scripts before the first paint cycle). drawElementImage reaches
+    // the no-snapshot branch the same way; getElementTransform must too.
+    canvas("canvas-yes-layoutsubtree").width = canvas("canvas-yes-layoutsubtree").width + 1;
+    assert_throws_dom("InvalidStateError", () => {
+        canvas("canvas-yes-layoutsubtree").getElementTransform(el("direct-child"), new DOMMatrix());
+    });
+}, "throws InvalidStateError when no snapshot has been recorded for the element");
+
+test(() => {
+    const offscreen = canvas("canvas-for-offscreen").transferControlToOffscreen();
+    assert_true("getElementTransform" in offscreen,
+        "getElementTransform is exposed on OffscreenCanvas when CanvasDrawElementEnabled is true");
+    assert_throws_dom("InvalidStateError", () => {
+        offscreen.getElementTransform(el("direct-child"), new DOMMatrix());
+    });
+}, "OffscreenCanvas: getElementTransform always throws InvalidStateError (no main-thread snapshot pipeline)");
+</script>
+</body>

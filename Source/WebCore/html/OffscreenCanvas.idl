@@ -68,6 +68,8 @@ enum OffscreenRenderingContextType {
     ImageBitmap? transferToImageBitmap();
     Promise<Blob> convertToBlob(optional ImageEncodeOptions options = {});
 
+    [RaisesException, EnabledBySetting=CanvasDrawElementEnabled] DOMMatrix getElementTransform(Element element, DOMMatrix drawTransform);
+
     // FIXME: Add support for `oncontextlost`.
     // attribute EventHandler oncontextlost;
     // FIXME: Add support for `oncontextrestored`.

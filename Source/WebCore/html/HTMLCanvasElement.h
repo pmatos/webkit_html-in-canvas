@@ -29,6 +29,7 @@
 
 #include <JavaScriptCore/JSCJSValue.h>
 #include <WebCore/ActiveDOMObject.h>
+#include <WebCore/AffineTransform.h>
 #include <WebCore/CanvasBase.h>
 #include <WebCore/CanvasChildPaintRecord.h>
 #include <WebCore/Document.h>
@@ -37,6 +38,7 @@
 #include <WebCore/HTMLElement.h>
 #include <WebCore/NodeIdentifier.h>
 #include <WebCore/PlatformDynamicRangeLimit.h>
+#include <WebCore/TransformationMatrix.h>
 #include <memory>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
@@ -50,6 +52,7 @@ namespace WebCore {
 class BlobCallback;
 class CanvasRenderingContext;
 class CanvasRenderingContext2D;
+class DOMMatrix;
 class GPU;
 class GPUCanvasContext;
 class GraphicsContext;
@@ -87,6 +90,15 @@ public:
     void setCanvasChildPaintRecord(NodeIdentifier, std::unique_ptr<CanvasChildPaintRecord>);
     void clearCanvasChildPaintRecord(NodeIdentifier);
     void clearAllCanvasChildPaintRecords();
+
+    // Shared eligibility + math for drawElementImage (TB1b/TB2a/TB3a) and
+    // getElementTransform (TB3b). Returns the snapshot record on success,
+    // throws InvalidStateError on layoutsubtree/parent/record failures.
+    // TB4 (#9) will subsume the validator with the full Blink-parity version.
+    ExceptionOr<CanvasChildPaintRecord*> validateChildForDrawElementImage(Element&);
+    TransformationMatrix computeAlignmentMatrixForChild(const CanvasChildPaintRecord&, const AffineTransform& drawTransform) const;
+
+    ExceptionOr<Ref<DOMMatrix>> getElementTransform(Element&, DOMMatrix& drawTransform);
 
     CanvasRenderingContext* renderingContext() const final { return m_context.get(); }
     ExceptionOr<std::optional<RenderingContext>> getContext(JSC::JSGlobalObject&, const String& contextId, FixedVector<JSC::Strong<JSC::Unknown>>&& arguments);

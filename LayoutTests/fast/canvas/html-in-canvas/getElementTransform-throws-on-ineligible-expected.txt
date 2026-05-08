@@ -1,0 +1,10 @@
+
+
+
+PASS IDL: getElementTransform method is exposed under the runtime preference
+PASS throws InvalidStateError when the canvas does not have the layoutsubtree attribute
+PASS throws InvalidStateError when the element is not a direct child of the canvas
+PASS throws InvalidStateError when the element is a child of a different canvas
+PASS throws InvalidStateError when no snapshot has been recorded for the element
+PASS OffscreenCanvas: getElementTransform always throws InvalidStateError (no main-thread snapshot pipeline)
+

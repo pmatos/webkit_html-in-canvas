@@ -52,7 +52,9 @@
 namespace WebCore {
 
 class CanvasRenderingContext;
+class DOMMatrix;
 class DeferredPromise;
+class Element;
 class GPU;
 class GPUCanvasContext;
 class HTMLCanvasElement;
@@ -136,6 +138,8 @@ public:
     ExceptionOr<std::optional<OffscreenRenderingContext>> getContext(JSC::JSGlobalObject&, RenderingContextType, FixedVector<JSC::Strong<JSC::Unknown>>&& arguments);
     ExceptionOr<RefPtr<ImageBitmap>> transferToImageBitmap();
     void convertToBlob(ImageEncodeOptions&&, Ref<DeferredPromise>&&);
+
+    ExceptionOr<Ref<DOMMatrix>> getElementTransform(Element&, DOMMatrix& drawTransform);
 
     void didDraw(const std::optional<FloatRect>&, ShouldApplyPostProcessingToDirtyRect) final;
 

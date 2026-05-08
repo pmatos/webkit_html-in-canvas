@@ -54,7 +54,6 @@
 #include "ColorSerialization.h"
 #include "DOMMatrix.h"
 #include "DOMMatrix2DInit.h"
-#include "DrawElementImageMath.h"
 #include "FloatQuad.h"
 #include "FontCascadeFonts.h"
 #include "FontCascadeInlines.h"
@@ -1631,21 +1630,18 @@ ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImage(Eleme
 
 ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImageInternal(Element& element, double dx, double dy, std::optional<FloatSize> explicitDestSize)
 {
-    // <canvas layoutsubtree> snapshot replay. Eligibility (TB1b minimum — TB4 will add the
-    // full validator); order matches Blink's VerifyDrawElementImageEligibility.
+    // Order: canvas-context downcast → eligibility (throws) → geometry (silent identity)
+    // → replay → math. This sequence matches Blink's VerifyDrawElementImageEligibility
+    // and is required so that, e.g., a non-canvas context with NaN dwidth throws
+    // InvalidStateError rather than silently returning identity.
     RefPtr canvasElement = dynamicDowncast<HTMLCanvasElement>(canvasBase());
     if (!canvasElement)
         return Exception { ExceptionCode::InvalidStateError, "drawElementImage requires an HTMLCanvasElement context"_s };
 
-    if (!canvasElement->hasAttributeWithoutSynchronization(HTMLNames::layoutsubtreeAttr))
-        return Exception { ExceptionCode::InvalidStateError, "Canvas is not in layoutsubtree mode"_s };
-
-    if (element.parentNode() != canvasElement.get())
-        return Exception { ExceptionCode::InvalidStateError, "Element is not a direct child of the canvas"_s };
-
-    auto* record = canvasElement->canvasChildPaintRecord(element.nodeIdentifier());
-    if (!record)
-        return Exception { ExceptionCode::InvalidStateError, "No snapshot recorded for element"_s };
+    auto recordOrException = canvasElement->validateChildForDrawElementImage(element);
+    if (recordOrException.hasException())
+        return recordOrException.releaseException();
+    auto* record = recordOrException.releaseReturnValue();
 
     // Geometry validation. Non-finite dx/dy and (when explicit) non-finite/zero/negative or
     // sub-epsilon-positive dwidth/dheight → silent no-op, identity matrix.
@@ -1688,39 +1684,16 @@ ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImageIntern
         didDraw(destRect);
     }
 
-    // T_align = T_origin^-1 . S_cssToGrid^-1 . T_draw . S_cssToGrid . T_origin.
     // T_draw is the same chain we just replayed against drawingContext(): current CTM,
-    // then translate(dx, dy), then (when explicit) scale to the destination size. We
-    // build it from state().transform rather than reading it back from the
-    // GraphicsContext after the StateSaver restored it.
+    // then translate(dx, dy), then (when explicit) scale to the destination size. Built
+    // from state().transform rather than read back from the GraphicsContext (the StateSaver
+    // already restored it).
     AffineTransform drawTransform = state().transform;
     drawTransform.translate(dx, dy);
     if (explicitDestSize && boxSize.width() > 0 && boxSize.height() > 0)
         drawTransform.scaleNonUniform(destSize.width() / boxSize.width(), destSize.height() / boxSize.height());
 
-    // S_cssToGrid is read live from the canvas at draw time: corpus test 9 mutates
-    // canvas.width/height between paint and draw without a frame await, so the value
-    // captured in the snapshot record (canvasBackingStoreSize) cannot be authoritative.
-    FloatSize cssToGridScale { 1, 1 };
-    if (CheckedPtr canvasRenderer = canvasElement->renderBox()) {
-        float zoom = canvasRenderer->style().usedZoom();
-        FloatSize canvasUnzoomedCSSSize {
-            canvasRenderer->size().width() / zoom,
-            canvasRenderer->size().height() / zoom
-        };
-        if (canvasUnzoomedCSSSize.width() > 0 && canvasUnzoomedCSSSize.height() > 0) {
-            cssToGridScale = {
-                static_cast<float>(canvasElement->size().width()) / canvasUnzoomedCSSSize.width(),
-                static_cast<float>(canvasElement->size().height()) / canvasUnzoomedCSSSize.height()
-            };
-        }
-    }
-
-    auto matrix = computeDrawElementAlignmentMatrix({
-        record->state().transformOrigin,
-        cssToGridScale,
-        drawTransform,
-    });
+    auto matrix = canvasElement->computeAlignmentMatrixForChild(*record, drawTransform);
     return DOMMatrix::create(WTF::move(matrix), DOMMatrixReadOnly::Is2D::Yes);
 }
 
