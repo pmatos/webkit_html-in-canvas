@@ -1,0 +1,33 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>drawElementImage(child, sx, sy, sw, sh, dx, dy) — source crop, implicit 1:1 destination size</title>
+<style>
+  body { margin: 0; }
+  canvas { width: 200px; height: 200px; background: white; }
+  #child {
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(to right, red 0 50%, green 50% 100%);
+  }
+</style>
+<canvas id="c" width="200" height="200" layoutsubtree>
+  <div id="child"></div>
+</canvas>
+<script>
+function nextPaint() {
+    return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+async function run() {
+    if (window.testRunner) testRunner.waitUntilDone();
+    await nextPaint();
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+    const child = document.getElementById("child");
+    // 6-arg: source rect crops the green right-half (sx=50, sw=50); dest size defaults
+    // to source size (1:1 pixels), positioned at (75, 25).
+    ctx.drawElementImage(child, 50, 0, 50, 100, 75, 25);
+    // 6-arg: red left-half cropped (sx=0, sw=25); dest at (10, 130) at 25x100.
+    ctx.drawElementImage(child, 0, 0, 25, 100, 10, 130);
+    if (window.testRunner) testRunner.notifyDone();
+}
+run();
+</script>

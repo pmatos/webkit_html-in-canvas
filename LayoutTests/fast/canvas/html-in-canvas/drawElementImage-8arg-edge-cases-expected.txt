@@ -1,0 +1,4 @@
+
+PASS 8-arg drawElementImage with non-finite/zero/negative source or dest geometry is a silent no-op returning identity
+PASS 8-arg drawElementImage runs eligibility checks before geometry validation
+

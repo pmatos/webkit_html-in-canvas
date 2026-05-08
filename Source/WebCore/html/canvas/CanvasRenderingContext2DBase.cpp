@@ -1616,7 +1616,7 @@ ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(CanvasImageSource&& im
 
 ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImage(Element& element, double dx, double dy)
 {
-    return drawElementImageInternal(element, dx, dy, std::nullopt);
+    return drawElementImageInternal(element, std::nullopt, dx, dy, std::nullopt);
 }
 
 ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImage(Element& element, double dx, double dy, double dwidth, double dheight)
@@ -1625,10 +1625,26 @@ ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImage(Eleme
     // eligibility (canvas type, layoutsubtree, parent, snapshot) runs BEFORE geometry
     // short-circuits — a non-canvas context with NaN dwidth must throw InvalidStateError,
     // not silently return identity. Matches Blink's VerifyDrawElementImageEligibility order.
-    return drawElementImageInternal(element, dx, dy, FloatSize { static_cast<float>(dwidth), static_cast<float>(dheight) });
+    return drawElementImageInternal(element, std::nullopt, dx, dy, FloatSize { static_cast<float>(dwidth), static_cast<float>(dheight) });
 }
 
-ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImageInternal(Element& element, double dx, double dy, std::optional<FloatSize> explicitDestSize)
+ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImage(Element& element, double sx, double sy, double sw, double sh, double dx, double dy)
+{
+    // 6-arg public method does no geometry validation. All checks live in the helper, so
+    // eligibility runs BEFORE geometry short-circuits (see 4-arg comment above).
+    // Implicit destination size: 1:1 source-to-dest pixels (dw=sw, dh=sh) — equivalent to
+    // passing the source size as the explicit destination size.
+    FloatRect sourceRect { static_cast<float>(sx), static_cast<float>(sy), static_cast<float>(sw), static_cast<float>(sh) };
+    return drawElementImageInternal(element, sourceRect, dx, dy, std::nullopt);
+}
+
+ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImage(Element& element, double sx, double sy, double sw, double sh, double dx, double dy, double dwidth, double dheight)
+{
+    FloatRect sourceRect { static_cast<float>(sx), static_cast<float>(sy), static_cast<float>(sw), static_cast<float>(sh) };
+    return drawElementImageInternal(element, sourceRect, dx, dy, FloatSize { static_cast<float>(dwidth), static_cast<float>(dheight) });
+}
+
+ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImageInternal(Element& element, std::optional<FloatRect> sourceRect, double dx, double dy, std::optional<FloatSize> explicitDestSize)
 {
     // Order: canvas-context downcast → eligibility (throws) → geometry (silent identity)
     // → replay → math. This sequence matches Blink's VerifyDrawElementImageEligibility
@@ -1653,45 +1669,74 @@ ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImageIntern
     // the same no-op path on both engines. Deliberately diverges from drawImage 9-arg's
     // normalizeRect() mirroring for negative widths because the spec PR (whatwg/html#11588)
     // is silent and Chrome is the de-facto reference.
+    constexpr float kMinExtent = 8.0f * std::numeric_limits<float>::epsilon();
     if (!std::isfinite(dx) || !std::isfinite(dy))
         return DOMMatrix::create(TransformationMatrix { }, DOMMatrixReadOnly::Is2D::Yes);
     if (explicitDestSize) {
         if (!std::isfinite(explicitDestSize->width()) || !std::isfinite(explicitDestSize->height()))
             return DOMMatrix::create(TransformationMatrix { }, DOMMatrixReadOnly::Is2D::Yes);
-        constexpr float kMinDestExtent = 8.0f * std::numeric_limits<float>::epsilon();
-        if (explicitDestSize->width() < kMinDestExtent || explicitDestSize->height() < kMinDestExtent)
+        if (explicitDestSize->width() < kMinExtent || explicitDestSize->height() < kMinExtent)
+            return DOMMatrix::create(TransformationMatrix { }, DOMMatrixReadOnly::Is2D::Yes);
+    }
+    // Source-rect validation mirrors destination validation: non-finite, zero, sub-epsilon-positive,
+    // or negative source widths are silent no-ops returning identity. Source origin (sx, sy) may be
+    // negative or out-of-bounds; the existing destination-rect clip handles OOB at replay time.
+    if (sourceRect) {
+        if (!std::isfinite(sourceRect->x()) || !std::isfinite(sourceRect->y())
+            || !std::isfinite(sourceRect->width()) || !std::isfinite(sourceRect->height()))
+            return DOMMatrix::create(TransformationMatrix { }, DOMMatrixReadOnly::Is2D::Yes);
+        if (sourceRect->width() < kMinExtent || sourceRect->height() < kMinExtent)
             return DOMMatrix::create(TransformationMatrix { }, DOMMatrixReadOnly::Is2D::Yes);
     }
 
     auto& boxSize = record->state().boxSize;
-    auto destSize = explicitDestSize.value_or(boxSize);
+    // 6-arg with no explicit destination size: dest defaults to source rect size (1:1 pixels).
+    // 4/8-arg: explicit destination size given. 3-arg: no source rect, no explicit dest — fall
+    // back to box size (TB1b behaviour).
+    FloatSize destSize;
+    if (explicitDestSize)
+        destSize = *explicitDestSize;
+    else if (sourceRect)
+        destSize = sourceRect->size();
+    else
+        destSize = boxSize;
+
+    // Replay-scale divisor: when a source rect is provided, scale by destSize/sourceRect.size()
+    // (cropping path). Else when explicit dest size is given, scale by destSize/boxSize (TB2a
+    // path, unchanged). Else identity scale (TB1b path, unchanged).
+    FloatSize replaySrcSize = sourceRect ? sourceRect->size() : boxSize;
+    bool wantScale = (sourceRect || explicitDestSize) && replaySrcSize.width() > 0 && replaySrcSize.height() > 0;
+    float scaleX = wantScale ? destSize.width() / replaySrcSize.width() : 1.0f;
+    float scaleY = wantScale ? destSize.height() / replaySrcSize.height() : 1.0f;
 
     // Replay. The canvas's current CTM is already baked into drawingContext()'s state; we
-    // clip in canvas coords first, then translate the replay origin, then (when scaling)
-    // scale child-local units into canvas-grid units, then replay the display list.
+    // clip in canvas coords first, then translate the replay origin, then scale child-local
+    // units into canvas-grid units, then (for source-cropping) translate by -(sx,sy) so the
+    // source rect's top-left lands at the destination origin, then replay the display list.
     if (auto* context = drawingContext()) {
         GraphicsContextStateSaver saver(*context);
         FloatRect destRect { static_cast<float>(dx), static_cast<float>(dy), destSize.width(), destSize.height() };
         context->clip(destRect);
         context->translate(static_cast<float>(dx), static_cast<float>(dy));
-        if (explicitDestSize && boxSize.width() > 0 && boxSize.height() > 0) {
-            float sx = destSize.width() / boxSize.width();
-            float sy = destSize.height() / boxSize.height();
-            if (sx != 1.0f || sy != 1.0f)
-                context->scale(FloatSize { sx, sy });
-        }
+        if (wantScale && (scaleX != 1.0f || scaleY != 1.0f))
+            context->scale(FloatSize { scaleX, scaleY });
+        if (sourceRect)
+            context->translate(static_cast<float>(-sourceRect->x()), static_cast<float>(-sourceRect->y()));
         context->drawDisplayList(record->displayList());
         didDraw(destRect);
     }
 
-    // T_draw is the same chain we just replayed against drawingContext(): current CTM,
-    // then translate(dx, dy), then (when explicit) scale to the destination size. Built
-    // from state().transform rather than read back from the GraphicsContext (the StateSaver
-    // already restored it).
+    // T_draw is the same chain we just replayed against drawingContext(): current CTM, then
+    // translate(dx, dy), then scale destSize/replaySrcSize, then (for source-cropping) translate
+    // by -(sx, sy). Built from state().transform rather than read back from the GraphicsContext
+    // (the StateSaver already restored it). The 1.0×1.0 scale short-circuit mirrors the replay
+    // path so that the 6-arg implicit-1:1 case emits a translation-only matrix.
     AffineTransform drawTransform = state().transform;
     drawTransform.translate(dx, dy);
-    if (explicitDestSize && boxSize.width() > 0 && boxSize.height() > 0)
-        drawTransform.scaleNonUniform(destSize.width() / boxSize.width(), destSize.height() / boxSize.height());
+    if (wantScale && (scaleX != 1.0f || scaleY != 1.0f))
+        drawTransform.scaleNonUniform(scaleX, scaleY);
+    if (sourceRect)
+        drawTransform.translate(-sourceRect->x(), -sourceRect->y());
 
     auto matrix = canvasElement->computeAlignmentMatrixForChild(*record, drawTransform);
     return DOMMatrix::create(WTF::move(matrix), DOMMatrixReadOnly::Is2D::Yes);

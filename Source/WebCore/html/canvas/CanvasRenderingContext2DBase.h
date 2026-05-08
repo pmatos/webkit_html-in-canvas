@@ -213,9 +213,11 @@ public:
     ExceptionOr<void> drawImage(CanvasImageSource&&, float dx, float dy, float dw, float dh);
     ExceptionOr<void> drawImage(CanvasImageSource&&, float sx, float sy, float sw, float sh, float dx, float dy, float dw, float dh);
 
-    // <canvas layoutsubtree> snapshot replay (TB1b/TB2a). 6/8-arg overloads land in TB2b.
+    // <canvas layoutsubtree> snapshot replay (TB1b/TB2a/TB2b).
     ExceptionOr<Ref<DOMMatrix>> drawElementImage(Element&, double dx, double dy);
     ExceptionOr<Ref<DOMMatrix>> drawElementImage(Element&, double dx, double dy, double dwidth, double dheight);
+    ExceptionOr<Ref<DOMMatrix>> drawElementImage(Element&, double sx, double sy, double sw, double sh, double dx, double dy);
+    ExceptionOr<Ref<DOMMatrix>> drawElementImage(Element&, double sx, double sy, double sw, double sh, double dx, double dy, double dwidth, double dheight);
 
     void clearCanvas();
 
@@ -446,7 +448,7 @@ private:
     ExceptionOr<RefPtr<CanvasPattern>> createPattern(HTMLImageElement&, bool repeatX, bool repeatY);
     ExceptionOr<RefPtr<CanvasPattern>> createPattern(SVGImageElement&, bool repeatX, bool repeatY);
 
-    ExceptionOr<Ref<DOMMatrix>> drawElementImageInternal(Element&, double dx, double dy, std::optional<FloatSize> explicitDestSize);
+    ExceptionOr<Ref<DOMMatrix>> drawElementImageInternal(Element&, std::optional<FloatRect> sourceRect, double dx, double dy, std::optional<FloatSize> explicitDestSize);
     ExceptionOr<RefPtr<CanvasPattern>> createPattern(CanvasBase&, bool repeatX, bool repeatY);
 #if ENABLE(VIDEO)
     ExceptionOr<RefPtr<CanvasPattern>> createPattern(HTMLVideoElement&, bool repeatX, bool repeatY);

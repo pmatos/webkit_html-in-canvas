@@ -1,0 +1,33 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>drawElementImage 8-arg — source/destination geometry is canvas-grid (backing) pixels</title>
+<style>
+  body { margin: 0; }
+  canvas { width: 200px; height: 200px; background: white; }
+  #child {
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(to right, red 0 50%, green 50% 100%);
+  }
+</style>
+<canvas id="c" width="400" height="400" layoutsubtree>
+  <div id="child"></div>
+</canvas>
+<script>
+function nextPaint() {
+    return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+async function run() {
+    if (window.testRunner) testRunner.waitUntilDone();
+    await nextPaint();
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+    const child = document.getElementById("child");
+    // Canvas backing 400x400, CSS 200x200 (2x downsample). Source rect (50, 0, 50, 100)
+    // crops the green right-half (in element CSS px); destination (100, 100, 200, 200)
+    // is canvas-grid pixels — renders as a 100x100 CSS rect at (50, 50). Verifies that
+    // sx/sy/sw/sh stay in element CSS px even when the canvas is in a different scale.
+    ctx.drawElementImage(child, 50, 0, 50, 100, 100, 100, 200, 200);
+    if (window.testRunner) testRunner.notifyDone();
+}
+run();
+</script>

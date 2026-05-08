@@ -1,0 +1,81 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>drawElementImage 8-arg — returned matrix is T(dx,dy) . S(dw/sw, dh/sh) . T(-sx,-sy)</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<body>
+<canvas id="cvs" width="100" height="100" layoutsubtree>
+  <div id="child" style="width:100px;height:100px;background:green;transform-origin:0 0"></div>
+</canvas>
+<script>
+const cvs = document.getElementById("cvs");
+const child = document.getElementById("child");
+const ctx = cvs.getContext("2d");
+
+function nextPaint() {
+    return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+
+function expectedMatrix(sx, sy, sw, sh, dx, dy, dw, dh) {
+    return new DOMMatrix()
+        .translateSelf(dx, dy)
+        .scaleSelf(dw / sw, dh / sh)
+        .translateSelf(-sx, -sy);
+}
+
+function assertMatrixApprox(actual, expected, label) {
+    assert_true(actual instanceof DOMMatrix, `${label}: returns DOMMatrix`);
+    assert_equals(actual.is2D, true, `${label}: is2D`);
+    const a = actual.toFloat64Array();
+    const e = expected.toFloat64Array();
+    for (let i = 0; i < 16; i++) {
+        assert_approx_equals(a[i], e[i], 0.001,
+            `${label}: matrix element ${i} (got ${a[i]}, expected ${e[i]})`);
+    }
+}
+
+promise_test(async t => {
+    t.add_cleanup(() => ctx.reset());
+    await nextPaint();
+    // Canonical corpus case-12 tuple from drawElementImage-returned-matrix-worker.html:281-287.
+    // Source rect (sx=2, sy=3, sw=5, sh=5) maps to dest rect (dx=17, dy=-9, dw=10, dh=10).
+    // Expected: T(17,-9) . S(2,2) . T(-2,-3).
+    const m = ctx.drawElementImage(child, 2, 3, 5, 5, 17, -9, 10, 10);
+    assertMatrixApprox(m, expectedMatrix(2, 3, 5, 5, 17, -9, 10, 10),
+        "case-12 tuple (2,3,5,5,17,-9,10,10)");
+}, "8-arg returned matrix: corpus case-12 tuple");
+
+promise_test(async t => {
+    t.add_cleanup(() => ctx.reset());
+    await nextPaint();
+    // Trivial 1:1 source-to-dest crop, no offset.
+    const m = ctx.drawElementImage(child, 0, 0, 50, 50, 0, 0, 50, 50);
+    assertMatrixApprox(m, expectedMatrix(0, 0, 50, 50, 0, 0, 50, 50),
+        "1:1 crop with zero origins");
+}, "8-arg returned matrix: 1:1 crop");
+
+promise_test(async t => {
+    t.add_cleanup(() => ctx.reset());
+    await nextPaint();
+    // Non-square source-to-dest scale factor, non-zero source origin, non-zero dest origin.
+    const m = ctx.drawElementImage(child, 10, 20, 30, 40, 5, 5, 60, 80);
+    assertMatrixApprox(m, expectedMatrix(10, 20, 30, 40, 5, 5, 60, 80),
+        "asymmetric scale (60/30, 80/40)");
+}, "8-arg returned matrix: asymmetric scale");
+
+promise_test(async t => {
+    t.add_cleanup(() => ctx.reset());
+    await nextPaint();
+    // CTM propagation: ctx.translate(7, 11) followed by drawElementImage. The returned
+    // matrix is the input transform applied to element-local points; the test in case-12
+    // confirms CTM is included via state().transform * T(dx,dy) * S(...) * T(-sx,-sy).
+    ctx.translate(7, 11);
+    const m = ctx.drawElementImage(child, 2, 3, 5, 5, 17, -9, 10, 10);
+    const expected = new DOMMatrix()
+        .translateSelf(7, 11)
+        .translateSelf(17, -9)
+        .scaleSelf(2, 2)
+        .translateSelf(-2, -3);
+    assertMatrixApprox(m, expected, "CTM-translated case-12");
+}, "8-arg returned matrix: CTM translate is included");
+</script>
+</body>

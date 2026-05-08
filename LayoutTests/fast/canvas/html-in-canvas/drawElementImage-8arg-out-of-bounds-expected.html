@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<title>Reference: three partial green rects at OOB source-rect destinations on a 300x300 white canvas</title>
+<style>
+  body { margin: 0; }
+  canvas { width: 300px; height: 300px; background: white; }
+</style>
+<canvas id="c" width="300" height="300"></canvas>
+<script>
+const ctx = document.getElementById("c").getContext("2d");
+ctx.fillStyle = "green";
+// Case A: green at (50..100, 0..100) — right half of dest A (left half transparent).
+ctx.fillRect(50, 0, 50, 100);
+// Case B: green at (100..150, 100..150) — top-left quadrant of dest B (rest transparent).
+ctx.fillRect(100, 100, 50, 50);
+// Case C: nothing drawn — fully OOB source produces fully transparent destination C.
+</script>

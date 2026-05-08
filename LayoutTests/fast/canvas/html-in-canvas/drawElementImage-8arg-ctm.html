@@ -1,0 +1,43 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>drawElementImage 8-arg — source crop composes with non-identity canvas CTM</title>
+<style>
+  body { margin: 0; }
+  canvas { width: 300px; height: 300px; background: white; }
+  #child {
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(to right, red 0 50%, green 50% 100%);
+  }
+</style>
+<canvas id="c" width="300" height="300" layoutsubtree>
+  <div id="child"></div>
+</canvas>
+<script>
+function nextPaint() {
+    return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+async function run() {
+    if (window.testRunner) testRunner.waitUntilDone();
+    await nextPaint();
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+    const child = document.getElementById("child");
+
+    // CTM-translate before drawElementImage. Source rect (50, 0, 50, 100) crops the green
+    // right-half of the gradient element; destination is (0, 0, 50, 100) in CTM-translated
+    // space, which is canvas (80, 50, 50, 100) absolute. The visible region must be solid
+    // green in the destination — the source-rect translate(-50, 0) in canvas/replay code
+    // composes against the CTM, not against the dest origin alone.
+    ctx.translate(80, 50);
+    ctx.drawElementImage(child, 50, 0, 50, 100, 0, 0, 50, 100);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    // CTM-translate before a red-left crop drawn at (10, 200) absolute.
+    ctx.translate(10, 200);
+    ctx.drawElementImage(child, 0, 0, 50, 100, 0, 0, 50, 50);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    if (window.testRunner) testRunner.notifyDone();
+}
+run();
+</script>

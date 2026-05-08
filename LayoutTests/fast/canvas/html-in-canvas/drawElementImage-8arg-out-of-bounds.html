@@ -1,0 +1,40 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>drawElementImage 8-arg — out-of-bounds source rects produce transparent regions</title>
+<style>
+  body { margin: 0; }
+  canvas { width: 300px; height: 300px; background: white; }
+  #child { width: 100px; height: 100px; background: green; }
+</style>
+<canvas id="c" width="300" height="300" layoutsubtree>
+  <div id="child"></div>
+</canvas>
+<script>
+function nextPaint() {
+    return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+async function run() {
+    if (window.testRunner) testRunner.waitUntilDone();
+    await nextPaint();
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+    const child = document.getElementById("child");
+
+    // Case A: left side OOB. Source rect (-50, 0, 100, 100); only the right half of
+    // source [0..50] intersects the 100x100 element. With 1:1 dest scale (100x100 dest),
+    // the visible green area lands at canvas (50..100, 0..100); left half transparent.
+    ctx.drawElementImage(child, -50, 0, 100, 100, 0, 0, 100, 100);
+
+    // Case B: bottom-right side OOB. Source (50, 50, 100, 100); only [50..100, 50..100]
+    // intersects the element. With 1:1 dest scale at dest (100, 100), the visible green
+    // area lands at canvas (100..150, 100..150); right and bottom transparent.
+    ctx.drawElementImage(child, 50, 50, 100, 100, 100, 100, 100, 100);
+
+    // Case C: fully OOB. Source (200, 200, 50, 50); no intersection with element.
+    // Destination region (200, 200, 100, 100) stays fully transparent (white background
+    // shows through).
+    ctx.drawElementImage(child, 200, 200, 50, 50, 200, 200, 100, 100);
+
+    if (window.testRunner) testRunner.notifyDone();
+}
+run();
+</script>

@@ -1,0 +1,5 @@
+
+PASS 6-arg returned matrix: canonical tuple is translate-only
+PASS 6-arg returned matrix: zero source origin reduces to pure translation
+PASS 6-arg returned matrix: CTM translate is included
+

@@ -1,0 +1,75 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>drawElementImage 8-arg — non-finite/zero/negative source-rect geometry is a silent no-op</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<body>
+<canvas id="cvs" width="100" height="100" layoutsubtree>
+  <div id="child" style="width:50px;height:50px;background:red"></div>
+</canvas>
+<script>
+const cvs = document.getElementById("cvs");
+const child = document.getElementById("child");
+const ctx = cvs.getContext("2d");
+
+function nextPaint() {
+    return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+
+function assertNoOpReturnsIdentity(label, sx, sy, sw, sh, dx, dy, dw, dh) {
+    let m;
+    try {
+        m = ctx.drawElementImage(child, sx, sy, sw, sh, dx, dy, dw, dh);
+    } catch (e) {
+        assert_unreached(`drawElementImage(child, ${sx}, ${sy}, ${sw}, ${sh}, ${dx}, ${dy}, ${dw}, ${dh}) threw ${e}`);
+    }
+    assert_true(m instanceof DOMMatrix, `${label}: returns DOMMatrix`);
+    assert_equals(m.is2D, true, `${label}: is2D`);
+    assert_true(m.isIdentity, `${label}: isIdentity`);
+}
+
+promise_test(async t => {
+    await nextPaint();
+    // Sentinel fill so we can verify pixels are untouched after no-op draws.
+    ctx.fillStyle = "blue";
+    ctx.fillRect(0, 0, 100, 100);
+
+    // Source-rect dimension edge cases (mirror the 4-arg dest-rect cases).
+    assertNoOpReturnsIdentity("zero sw",         0, 0, 0,   50,  0, 0, 100, 100);
+    assertNoOpReturnsIdentity("zero sh",         0, 0, 50,  0,   0, 0, 100, 100);
+    assertNoOpReturnsIdentity("negative sw",     0, 0, -10, 50,  0, 0, 100, 100);
+    assertNoOpReturnsIdentity("negative sh",     0, 0, 50,  -10, 0, 0, 100, 100);
+    assertNoOpReturnsIdentity("sub-epsilon sw",  0, 0, 1e-10, 50, 0, 0, 100, 100);
+    assertNoOpReturnsIdentity("sub-epsilon sh",  0, 0, 50, 1e-10, 0, 0, 100, 100);
+    assertNoOpReturnsIdentity("NaN sw",          0, 0, NaN, 50,  0, 0, 100, 100);
+    assertNoOpReturnsIdentity("NaN sh",          0, 0, 50,  NaN, 0, 0, 100, 100);
+    assertNoOpReturnsIdentity("Infinity sw",     0, 0, Infinity, 50,  0, 0, 100, 100);
+    assertNoOpReturnsIdentity("-Infinity sh",    0, 0, 50, -Infinity, 0, 0, 100, 100);
+
+    // Source-rect origin non-finite cases.
+    assertNoOpReturnsIdentity("NaN sx",          NaN, 0, 50, 50,  0, 0, 100, 100);
+    assertNoOpReturnsIdentity("NaN sy",          0, NaN, 50, 50,  0, 0, 100, 100);
+    assertNoOpReturnsIdentity("Infinity sx",     Infinity, 0, 50, 50, 0, 0, 100, 100);
+
+    // Existing 4-arg dest cases must still hold for the 8-arg shape.
+    assertNoOpReturnsIdentity("NaN dx",          0, 0, 50, 50,  NaN, 0, 100, 100);
+    assertNoOpReturnsIdentity("NaN dw",          0, 0, 50, 50,  0, 0, NaN, 100);
+    assertNoOpReturnsIdentity("zero dw",         0, 0, 50, 50,  0, 0, 0,   100);
+    assertNoOpReturnsIdentity("negative dh",     0, 0, 50, 50,  0, 0, 100, -10);
+
+    const px = ctx.getImageData(50, 50, 1, 1).data;
+    assert_array_equals([px[0], px[1], px[2], px[3]], [0, 0, 255, 255],
+        "pixels unchanged by no-op draws (sentinel blue still present)");
+}, "8-arg drawElementImage with non-finite/zero/negative source or dest geometry is a silent no-op returning identity");
+
+promise_test(async t => {
+    // Eligibility (canvas type, layoutsubtree, parent, snapshot) MUST run BEFORE geometry
+    // validation, so that a non-HTMLCanvasElement context throws InvalidStateError instead
+    // of silently returning identity for non-finite source-rect geometry.
+    const offscreen = new OffscreenCanvas(100, 100);
+    const octx = offscreen.getContext("2d");
+    assert_throws_dom("InvalidStateError", () => {
+        octx.drawElementImage(child, 0, 0, NaN, 50, 0, 0, 100, 100);
+    }, "OffscreenCanvas + NaN sw still throws InvalidStateError (eligibility before geometry)");
+}, "8-arg drawElementImage runs eligibility checks before geometry validation");
+</script>
+</body>

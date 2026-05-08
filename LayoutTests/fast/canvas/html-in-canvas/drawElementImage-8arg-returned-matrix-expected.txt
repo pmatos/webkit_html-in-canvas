@@ -1,0 +1,6 @@
+
+PASS 8-arg returned matrix: corpus case-12 tuple
+PASS 8-arg returned matrix: 1:1 crop
+PASS 8-arg returned matrix: asymmetric scale
+PASS 8-arg returned matrix: CTM translate is included
+

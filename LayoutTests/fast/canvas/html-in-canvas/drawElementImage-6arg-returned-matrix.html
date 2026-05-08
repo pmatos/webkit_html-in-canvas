@@ -1,0 +1,67 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>drawElementImage 6-arg — returned matrix is T(dx,dy) . T(-sx,-sy) (implicit 1:1 destination)</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<body>
+<canvas id="cvs" width="100" height="100" layoutsubtree>
+  <div id="child" style="width:100px;height:100px;background:green;transform-origin:0 0"></div>
+</canvas>
+<script>
+const cvs = document.getElementById("cvs");
+const child = document.getElementById("child");
+const ctx = cvs.getContext("2d");
+
+function nextPaint() {
+    return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+
+function expectedMatrix6arg(sx, sy, sw, sh, dx, dy) {
+    // 6-arg implicit: dw=sw, dh=sh → scale factor degenerates to 1, leaving translation only.
+    return new DOMMatrix()
+        .translateSelf(dx, dy)
+        .translateSelf(-sx, -sy);
+}
+
+function assertMatrixApprox(actual, expected, label) {
+    assert_true(actual instanceof DOMMatrix, `${label}: returns DOMMatrix`);
+    assert_equals(actual.is2D, true, `${label}: is2D`);
+    const a = actual.toFloat64Array();
+    const e = expected.toFloat64Array();
+    for (let i = 0; i < 16; i++) {
+        assert_approx_equals(a[i], e[i], 0.001,
+            `${label}: matrix element ${i} (got ${a[i]}, expected ${e[i]})`);
+    }
+}
+
+promise_test(async t => {
+    t.add_cleanup(() => ctx.reset());
+    await nextPaint();
+    // Plan-recommended canonical 6-arg tuple.
+    const m = ctx.drawElementImage(child, 10, 20, 30, 30, 5, 5);
+    assertMatrixApprox(m, expectedMatrix6arg(10, 20, 30, 30, 5, 5),
+        "tuple (10, 20, 30, 30, 5, 5)");
+}, "6-arg returned matrix: canonical tuple is translate-only");
+
+promise_test(async t => {
+    t.add_cleanup(() => ctx.reset());
+    await nextPaint();
+    // Zero source origin: matrix should be exactly T(dx, dy) regardless of source size.
+    const m = ctx.drawElementImage(child, 0, 0, 50, 50, 17, -9);
+    const expected = new DOMMatrix().translateSelf(17, -9);
+    assertMatrixApprox(m, expected, "tuple (0, 0, 50, 50, 17, -9)");
+}, "6-arg returned matrix: zero source origin reduces to pure translation");
+
+promise_test(async t => {
+    t.add_cleanup(() => ctx.reset());
+    await nextPaint();
+    // 6-arg under non-identity CTM. T_draw = state().transform * T(dx,dy) * T(-sx,-sy).
+    ctx.translate(7, 11);
+    const m = ctx.drawElementImage(child, 10, 20, 30, 30, 5, 5);
+    const expected = new DOMMatrix()
+        .translateSelf(7, 11)
+        .translateSelf(5, 5)
+        .translateSelf(-10, -20);
+    assertMatrixApprox(m, expected, "CTM-translated tuple");
+}, "6-arg returned matrix: CTM translate is included");
+</script>
+</body>
