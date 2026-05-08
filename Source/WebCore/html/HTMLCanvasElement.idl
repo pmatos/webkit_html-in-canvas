@@ -54,4 +54,6 @@ typedef (
     [CEReactions=NotNeeded, Reflect, EnabledBySetting=CanvasDrawElementEnabled] attribute boolean layoutSubtree;
 
     [RaisesException, EnabledBySetting=CanvasDrawElementEnabled] DOMMatrix getElementTransform(Element element, DOMMatrix drawTransform);
+
+    [EnabledBySetting=CanvasDrawElementEnabled] attribute EventHandler onpaint;
 };

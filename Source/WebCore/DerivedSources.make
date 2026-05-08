@@ -1119,6 +1119,7 @@ JS_BINDING_IDLS := \
     $(WebCore)/dom/BeforeUnloadEvent.idl \
     $(WebCore)/dom/BroadcastChannel.idl \
     $(WebCore)/dom/CDATASection.idl \
+    $(WebCore)/dom/CanvasPaintEvent.idl \
     $(WebCore)/dom/CaretPositionFromPointOptions.idl \
     $(WebCore)/dom/CaretPosition.idl \
     $(WebCore)/dom/CharacterData.idl \

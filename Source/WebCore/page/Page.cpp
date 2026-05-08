@@ -43,6 +43,7 @@
 #include "BroadcastChannelRegistry.h"
 #include "CacheStorageProvider.h"
 #include "CachedImage.h"
+#include "CanvasPaintEvent.h"
 #include "CaptionDisplaySettingsClient.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
@@ -99,6 +100,7 @@
 #include "FrameTree.h"
 #include "GeolocationController.h"
 #include "GraphicsLayer.h"
+#include "HTMLCanvasElement.h"
 #include "HTMLElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLMediaElement.h"
@@ -2108,6 +2110,28 @@ void Page::layoutIfNeeded(OptionSet<LayoutOptions> layoutOptions)
     }
 }
 
+void Page::scheduleCanvasPaintEvent(HTMLCanvasElement& canvas)
+{
+    if (!settings().canvasDrawElementEnabled())
+        return;
+    m_canvasesNeedingPaintEvent.add(canvas);
+    scheduleRenderingUpdate(RenderingUpdateStep::CanvasPaintEvents);
+}
+
+void Page::dispatchCanvasPaintEvents()
+{
+    // Swap-and-iterate so that any canvas re-enqueued during a handler (e.g. via
+    // a future requestPaint() in TB5b) defers to the next rendering update tick,
+    // mirroring Chrome's local_frame_view.cc:1065-1067 swap-out idiom.
+    auto pending = std::exchange(m_canvasesNeedingPaintEvent, { });
+    for (Ref canvas : pending) {
+        if (!canvas->isConnected())
+            continue;
+        Ref event = CanvasPaintEvent::create(eventNames().paintEvent);
+        canvas->dispatchEvent(event);
+    }
+}
+
 void Page::scheduleRenderingUpdate(OptionSet<RenderingUpdateStep> requestedSteps)
 {
     LOG_WITH_STREAM(EventLoop, stream << "Page " << this << " scheduleTimedRenderingUpdate() - requestedSteps " << requestedSteps << " remaining steps " << m_renderingUpdateRemainingSteps);
@@ -2346,6 +2370,16 @@ void Page::updateRendering()
     runProcessingStep(RenderingUpdateStep::IntersectionObservations, [] (Document& document) {
         document.updateIntersectionObservers();
     });
+
+    // TB5a: dispatch <canvas layoutsubtree> paint events between intersection
+    // observers and the next paint commit. The pending set is page-global, so we
+    // emit a single dispatch per tick (not via runProcessingStep, which iterates
+    // per renderable Document). Manual remove matches the WheelEventMonitorCallbacks
+    // pattern below.
+    if (m_renderingUpdateRemainingSteps.last().contains(RenderingUpdateStep::CanvasPaintEvents)) {
+        dispatchCanvasPaintEvents();
+        m_renderingUpdateRemainingSteps.last().remove(RenderingUpdateStep::CanvasPaintEvents);
+    }
 
     runProcessingStep(RenderingUpdateStep::Images, [] (Document& document) {
         for (auto& image : protect(document.cachedResourceLoader())->allCachedSVGImages()) {
@@ -5008,6 +5042,7 @@ WTF::TextStream& operator<<(WTF::TextStream& ts, RenderingUpdateStep step)
     case RenderingUpdateStep::AnimationFrameCallbacks: ts << "AnimationFrameCallbacks"_s; break;
     case RenderingUpdateStep::PerformPendingViewTransitions: ts << "PerformPendingViewTransitions"_s; break;
     case RenderingUpdateStep::IntersectionObservations: ts << "IntersectionObservations"_s; break;
+    case RenderingUpdateStep::CanvasPaintEvents: ts << "CanvasPaintEvents"_s; break;
     case RenderingUpdateStep::PaintTiming: ts << "PaintTiming"_s; break;
     case RenderingUpdateStep::EventTiming: ts << "EventTiming"_s; break;
     case RenderingUpdateStep::UpdateContentRelevancy: ts << "UpdateContentRelevancy"_s; break;

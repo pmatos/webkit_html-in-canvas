@@ -137,6 +137,7 @@ class FocusController;
 class FormData;
 class Frame;
 class GraphicsContext;
+class HTMLCanvasElement;
 class HTMLElement;
 class HTMLImageElement;
 class HTMLMediaElement;
@@ -319,6 +320,7 @@ enum class RenderingUpdateStep : uint32_t {
     PrepareCanvasesForDisplayOrFlush    = 1 << 21,
     CaretAnimation                      = 1 << 22,
     FocusFixup                          = 1 << 23,
+    CanvasPaintEvents                   = 1 << 24,
     UpdateValidationMessagePositions    = 1 << 25,
 #if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
     AccessibilityRegionUpdate           = 1 << 26,
@@ -352,6 +354,7 @@ constexpr OptionSet<RenderingUpdateStep> updateRenderingSteps = {
     RenderingUpdateStep::Fullscreen,
     RenderingUpdateStep::AnimationFrameCallbacks,
     RenderingUpdateStep::IntersectionObservations,
+    RenderingUpdateStep::CanvasPaintEvents,
     RenderingUpdateStep::ResizeObservations,
     RenderingUpdateStep::PaintTiming,
     RenderingUpdateStep::EventTiming,
@@ -839,6 +842,13 @@ public:
     // Schedule a rendering update that coordinates with display refresh.
     WEBCORE_EXPORT void scheduleRenderingUpdate(OptionSet<RenderingUpdateStep> requestedSteps);
     void didScheduleRenderingUpdate();
+
+    // <canvas layoutsubtree> paint event (TB5a). scheduleCanvasPaintEvent is called
+    // from RenderLayer::paintList when a layoutsubtree child snapshot is recorded;
+    // dispatchCanvasPaintEvents fires once per rendering update, between the
+    // intersection-observer step and the next paint, with swap-and-iterate semantics.
+    WEBCORE_EXPORT void scheduleCanvasPaintEvent(HTMLCanvasElement&);
+    void dispatchCanvasPaintEvents();
     // Trigger a rendering update in the current runloop. Only used for testing.
     void triggerRenderingUpdateForTesting();
 
@@ -1594,6 +1604,10 @@ private:
     bool m_imageAnimationEnabled { true };
     // Elements containing animations that are individually playing (potentially overriding the page-wide m_imageAnimationEnabled state).
     WeakHashSet<HTMLImageElement, WeakPtrImplWithEventTargetData> m_individuallyPlayingAnimationElements;
+    // <canvas layoutsubtree> elements scheduled to receive a `paint` event in the
+    // next rendering-update tick. Populated by Page::scheduleCanvasPaintEvent and
+    // drained by Page::dispatchCanvasPaintEvents (TB5a).
+    WeakHashSet<HTMLCanvasElement, WeakPtrImplWithEventTargetData> m_canvasesNeedingPaintEvent;
 #if ENABLE(ACCESSIBILITY_NON_BLINKING_CURSOR)
     bool m_prefersNonBlinkingCursor { false };
 #endif

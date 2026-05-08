@@ -11,6 +11,7 @@ BackgroundFetchUpdateUIEvent
 BeforeLoadEvent interfaceName=Event
 BeforeUnloadEvent
 BufferedChangeEvent conditional=MEDIA_SOURCE
+CanvasPaintEvent
 ClipboardEvent
 CloseEvent
 CommandEvent

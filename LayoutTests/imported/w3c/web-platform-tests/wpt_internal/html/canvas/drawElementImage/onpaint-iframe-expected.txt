@@ -1,3 +1,0 @@
-
-FAIL onpaint should fire after iframe changes. assert_equals: onpaint should fire after a grandchild iframe changes. expected 1 but got 0
-

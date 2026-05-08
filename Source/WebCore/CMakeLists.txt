@@ -1158,6 +1158,7 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/BeforeUnloadEvent.idl
     dom/BroadcastChannel.idl
     dom/CDATASection.idl
+    dom/CanvasPaintEvent.idl
     dom/CaretPosition.idl
     dom/CaretPositionFromPointOptions.idl
     dom/CharacterData.idl

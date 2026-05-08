@@ -4092,6 +4092,10 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
             canvasElement.setCanvasChildPaintRecord(
                 element->nodeIdentifier(),
                 makeUnique<CanvasChildPaintRecord>(WTF::move(displayList), state));
+            // TB5a: setCanvasChildPaintRecord internally schedules the canvas for a
+            // `paint` event when the new snapshot differs from the previously stored
+            // one. The decision is made there (not here) because it depends on the
+            // existing record's content.
             continue;
         }
 

@@ -29,6 +29,7 @@
 
 #include "ExceptionOr.h"
 #include "IntSize.h"
+#include "WebGLTexture.h"
 #include "XRSubImage.h"
 #include <wtf/Ref.h>
 #include <wtf/RefPtr.h>
@@ -36,7 +37,6 @@
 
 namespace WebCore {
 
-class WebGLTexture;
 class XRCompositionLayer;
 
 // https://immersive-web.github.io/layers/#xrwebglsubimagetype

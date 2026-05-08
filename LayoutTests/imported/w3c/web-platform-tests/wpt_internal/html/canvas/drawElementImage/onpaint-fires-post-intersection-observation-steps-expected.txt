@@ -1,3 +1,0 @@
-
-FAIL intersection observations should be calculated before onpaint, but should be delivered after onpaint assert_array_equals: onpaint should fire before intersection observations are delivered. lengths differ, expected array ["onpaint", "intersection"] length 2, got ["intersection"] length 1
-

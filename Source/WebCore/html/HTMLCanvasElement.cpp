@@ -38,6 +38,7 @@
 #include "CanvasRenderingContext2DSettings.h"
 #include "ContainerNodeInlines.h"
 #include "DOMMatrix.h"
+#include "DisplayList.h"
 #include "DocumentQuirks.h"
 #include "DocumentView.h"
 #include "DrawElementImageMath.h"
@@ -67,6 +68,7 @@
 #include "MIMETypeRegistry.h"
 #include "Navigator.h"
 #include "OffscreenCanvas.h"
+#include "Page.h"
 #include "PlaceholderRenderingContext.h"
 #include "RenderBoxInlines.h"
 #include "RenderElement.h"
@@ -582,7 +584,32 @@ CanvasChildPaintRecord* HTMLCanvasElement::canvasChildPaintRecord(NodeIdentifier
 
 void HTMLCanvasElement::setCanvasChildPaintRecord(NodeIdentifier id, std::unique_ptr<CanvasChildPaintRecord> record)
 {
+    // TB5a: schedule a paint event only when the new snapshot's content differs from
+    // the existing one for this child. WebKit re-records the layoutsubtree child every
+    // paint walk regardless of invalidation, so a byte-identical replay must NOT fire
+    // (matches "should not fire without changes" in onpaint.html). For the first-ever
+    // recording of a child (no existing entry), suppress the fire too: that is either
+    // initial-load baseline (no observable change) or a child added before any
+    // listener was attached.
+    //
+    // Comparison uses asText({}) as a content fingerprint — defaultflags exclude
+    // platform-specific SetState payload that varies between byte-identical recordings.
+    // This intentionally produces false negatives when style changes that don't reach
+    // the displaylist (e.g. when TB1b's invalidation does not propagate child CSS
+    // changes to the canvas's paint walk). TB5b will replace this with the
+    // changedElements-driven invalidation tracker that captures style invalidation
+    // directly rather than inferring from snapshot content.
+    auto it = m_canvasChildPaintRecords.find(id);
+    bool contentChanged = false;
+    if (it != m_canvasChildPaintRecords.end() && record && it->value)
+        contentChanged = it->value->displayList().asText({ }) != record->displayList().asText({ });
+
     m_canvasChildPaintRecords.set(id, WTF::move(record));
+
+    if (contentChanged) {
+        if (RefPtr page = document().page())
+            page->scheduleCanvasPaintEvent(*this);
+    }
 }
 
 void HTMLCanvasElement::clearCanvasChildPaintRecord(NodeIdentifier id)

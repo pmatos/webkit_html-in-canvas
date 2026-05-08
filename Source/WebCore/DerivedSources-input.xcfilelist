@@ -1432,6 +1432,7 @@ $(PROJECT_DIR)/dom/Attr.idl
 $(PROJECT_DIR)/dom/BeforeUnloadEvent.idl
 $(PROJECT_DIR)/dom/BroadcastChannel.idl
 $(PROJECT_DIR)/dom/CDATASection.idl
+$(PROJECT_DIR)/dom/CanvasPaintEvent.idl
 $(PROJECT_DIR)/dom/CaretPosition.idl
 $(PROJECT_DIR)/dom/CaretPositionFromPointOptions.idl
 $(PROJECT_DIR)/dom/CharacterData.idl

@@ -1222,6 +1222,7 @@ dom/BeforeUnloadEvent.cpp
 dom/BoundaryPoint.cpp
 dom/BroadcastChannel.cpp
 dom/CDATASection.cpp
+dom/CanvasPaintEvent.cpp
 dom/CaretPosition.cpp
 dom/CharacterData.cpp
 dom/ChildListMutationScope.cpp
@@ -3960,6 +3961,7 @@ JSCanvasImageData.cpp
 JSCanvasImageSmoothing.cpp
 JSCanvasLineCap.cpp
 JSCanvasLineJoin.cpp
+JSCanvasPaintEvent.cpp
 JSCanvasPath.cpp
 JSCanvasPathDrawingStyles.cpp
 JSCanvasPattern.cpp

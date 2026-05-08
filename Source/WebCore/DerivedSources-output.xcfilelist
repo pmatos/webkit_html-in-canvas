@@ -582,6 +582,8 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSCanvasLineCap.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSCanvasLineCap.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSCanvasLineJoin.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSCanvasLineJoin.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSCanvasPaintEvent.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSCanvasPaintEvent.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSCanvasPath.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSCanvasPath.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSCanvasPathDrawingStyles.cpp

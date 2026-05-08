@@ -107,6 +107,7 @@ namespace WebCore {
     macro(BufferedChangeEvent) \
     macro(Cache) \
     macro(CacheStorage) \
+    macro(CanvasPaintEvent) \
     macro(CaretPosition) \
     macro(ChannelMergerNode) \
     macro(ChannelSplitterNode) \

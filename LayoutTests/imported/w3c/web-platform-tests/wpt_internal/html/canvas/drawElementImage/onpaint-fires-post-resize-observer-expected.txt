@@ -1,3 +1,0 @@
-
-FAIL onpaint should fire after resize observer assert_array_equals: Resize observer should fire before onpaint. lengths differ, expected array ["resize", "onpaint"] length 2, got [] length 0
-
