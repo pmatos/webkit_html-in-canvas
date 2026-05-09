@@ -1652,6 +1652,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     html/VoidCallback.h
 
     html/canvas/CanvasChildPaintRecord.h
+    html/canvas/DrawElementImageEligibility.h
     html/canvas/DrawElementImageMath.h
     html/canvas/PredefinedColorSpace.h
     html/canvas/WebGLAny.h

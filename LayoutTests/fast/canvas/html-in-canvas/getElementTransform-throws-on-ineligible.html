@@ -3,7 +3,9 @@
 <script src="../../../resources/testharness.js"></script>
 <script src="../../../resources/testharnessreport.js"></script>
 <body>
-<canvas id="canvas-no-layoutsubtree"></canvas>
+<canvas id="canvas-no-layoutsubtree">
+    <div id="own-child-no-layoutsubtree"></div>
+</canvas>
 <canvas id="canvas-yes-layoutsubtree" layoutsubtree>
     <div id="direct-child">
         <span id="grandchild"></span>
@@ -22,23 +24,27 @@ test(() => {
         "getElementTransform is exposed on HTMLCanvasElement when CanvasDrawElementEnabled is true");
 }, "IDL: getElementTransform method is exposed under the runtime preference");
 
+// Note: TB4 (issue #9) reordered the validator. Direct-child / nested-canvas checks now
+// run before the layoutsubtree-attribute check. Tests that originally relied on
+// InvalidStateError firing first via cross-canvas/grandchild inputs were updated to
+// reflect the Chrome-parity order: rule 2 (TypeError for non-direct children) wins.
 test(() => {
     assert_throws_dom("InvalidStateError", () => {
-        canvas("canvas-no-layoutsubtree").getElementTransform(el("direct-child"), new DOMMatrix());
+        canvas("canvas-no-layoutsubtree").getElementTransform(el("own-child-no-layoutsubtree"), new DOMMatrix());
     });
 }, "throws InvalidStateError when the canvas does not have the layoutsubtree attribute");
 
 test(() => {
-    assert_throws_dom("InvalidStateError", () => {
+    assert_throws_js(TypeError, () => {
         canvas("canvas-yes-layoutsubtree").getElementTransform(el("grandchild"), new DOMMatrix());
     });
-}, "throws InvalidStateError when the element is not a direct child of the canvas");
+}, "throws TypeError when the element is not a direct child of the canvas");
 
 test(() => {
-    assert_throws_dom("InvalidStateError", () => {
+    assert_throws_js(TypeError, () => {
         canvas("canvas-yes-layoutsubtree").getElementTransform(el("child-of-other"), new DOMMatrix());
     });
-}, "throws InvalidStateError when the element is a child of a different canvas");
+}, "throws TypeError when the element is a child of a different canvas");
 
 test(() => {
     // Pre-paint: no snapshot record exists for the direct child yet (the layout-test

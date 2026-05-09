@@ -1,3 +1,3 @@
 
-FAIL canvas drawElementImage throws for a detached canvas due to lack of layout assert_throws_dom: Can't draw into a detached canvas. function "() => ctx.drawElementImage(child, 20, 30)" threw object "TypeError: ctx.drawElementImage is not a function. (In 'ctx.drawElementImage(child, 20, 30)', 'ctx.drawElementImage' is undefined)" that is not a DOMException InvalidStateError: property "code" is equal to undefined, expected 11
+PASS canvas drawElementImage throws for a detached canvas due to lack of layout
 

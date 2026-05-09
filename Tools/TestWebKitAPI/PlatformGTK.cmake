@@ -41,6 +41,7 @@ list(APPEND TestWebCore_SOURCES
     Tests/WebCore/CanvasChildSnapshotStore.cpp
     Tests/WebCore/CanvasGetElementTransform.cpp
     Tests/WebCore/CanvasSubtreeFlag.cpp
+    Tests/WebCore/DrawElementImageEligibilityTests.cpp
     Tests/WebCore/DrawElementImageMath.cpp
     Tests/WebCore/UserAgentQuirks.cpp
 

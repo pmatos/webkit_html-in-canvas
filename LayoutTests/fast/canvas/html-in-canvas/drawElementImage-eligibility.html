@@ -1,0 +1,143 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>drawElementImage / getElementTransform eligibility (TB4 / issue #9)</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<style>
+  /* Visible-by-default sizing so direct children pick up generated boxes / get snapshotted. */
+  #ok-canvas, #other-canvas, #outer-canvas, #inner-canvas, #no-layoutsubtree-canvas { width: 100px; height: 100px; }
+  #ok-canvas div, #other-canvas div, #inner-canvas div { width: 50px; height: 50px; background: green; }
+</style>
+<body>
+<canvas id="no-layoutsubtree-canvas">
+  <div id="child-of-no-layoutsubtree"></div>
+</canvas>
+<canvas id="ok-canvas" layoutsubtree>
+  <div id="ok-direct-child">
+    <span id="ok-grandchild"></span>
+  </div>
+</canvas>
+<canvas id="other-canvas" layoutsubtree>
+  <div id="ok-child-of-other"></div>
+</canvas>
+
+<canvas id="outer-canvas" layoutsubtree>
+  <canvas id="inner-canvas" layoutsubtree>
+    <div id="inner-direct-child"></div>
+  </canvas>
+</canvas>
+
+<canvas id="hidden-canvas" layoutsubtree style="display: none">
+  <div id="hidden-canvas-child"></div>
+</canvas>
+<canvas id="hidden-child-canvas" layoutsubtree>
+  <div id="hidden-child" style="display: none"></div>
+</canvas>
+
+<script>
+function ctx(id) { return document.getElementById(id).getContext("2d"); }
+function el(id)  { return document.getElementById(id); }
+function canvasEl(id) { return document.getElementById(id); }
+
+// IDL exposure
+test(() => {
+    assert_true("drawElementImage" in ctx("ok-canvas"),
+        "drawElementImage exposed under CanvasDrawElementEnabled");
+    assert_true("getElementTransform" in canvasEl("ok-canvas"),
+        "getElementTransform exposed under CanvasDrawElementEnabled");
+}, "TB4 IDL: drawElementImage and getElementTransform are exposed under the runtime preference");
+
+// Rule 2 (issue #9): non-direct child throws TypeError, not InvalidStateError.
+// This is the bug-fix this slice introduces — pre-TB4 the validator threw InvalidStateError.
+test(() => {
+    assert_throws_js(TypeError, () => {
+        ctx("ok-canvas").drawElementImage(el("ok-grandchild"), 0, 0);
+    });
+}, "drawElementImage throws TypeError for a non-direct child (grandchild)");
+
+test(() => {
+    assert_throws_js(TypeError, () => {
+        canvasEl("ok-canvas").getElementTransform(el("ok-grandchild"), new DOMMatrix());
+    });
+}, "getElementTransform throws TypeError for a non-direct child (grandchild)");
+
+test(() => {
+    assert_throws_js(TypeError, () => {
+        ctx("ok-canvas").drawElementImage(el("ok-child-of-other"), 0, 0);
+    });
+}, "drawElementImage throws TypeError when element is a child of a different canvas");
+
+// Rule 3: missing layoutsubtree throws InvalidStateError.
+test(() => {
+    assert_throws_dom("InvalidStateError", () => {
+        ctx("no-layoutsubtree-canvas").drawElementImage(el("child-of-no-layoutsubtree"), 0, 0);
+    });
+}, "drawElementImage throws InvalidStateError when canvas lacks layoutsubtree");
+
+test(() => {
+    assert_throws_dom("InvalidStateError", () => {
+        canvasEl("no-layoutsubtree-canvas").getElementTransform(el("child-of-no-layoutsubtree"), new DOMMatrix());
+    });
+}, "getElementTransform throws InvalidStateError when canvas lacks layoutsubtree");
+
+// Rule 1: nested canvas throws NotSupportedError.
+test(() => {
+    assert_throws_dom("NotSupportedError", () => {
+        ctx("inner-canvas").drawElementImage(el("inner-direct-child"), 0, 0);
+    });
+}, "drawElementImage throws NotSupportedError when canvas is nested in another <canvas layoutsubtree>");
+
+test(() => {
+    assert_throws_dom("NotSupportedError", () => {
+        canvasEl("inner-canvas").getElementTransform(el("inner-direct-child"), new DOMMatrix());
+    });
+}, "getElementTransform throws NotSupportedError when canvas is nested in another <canvas layoutsubtree>");
+
+// Rule 4: no snapshot recorded → InvalidStateError. Initial-state cases (no paint
+// has run for the canvas/child). The TB1b invalidation gap (cross-frame display:none
+// toggle) is not exercised here.
+test(() => {
+    assert_throws_dom("InvalidStateError", () => {
+        ctx("hidden-canvas").drawElementImage(el("hidden-canvas-child"), 0, 0);
+    });
+}, "drawElementImage throws InvalidStateError when canvas is display:none from initial DOM");
+
+test(() => {
+    assert_throws_dom("InvalidStateError", () => {
+        ctx("hidden-child-canvas").drawElementImage(el("hidden-child"), 0, 0);
+    });
+}, "drawElementImage throws InvalidStateError when child is display:none from initial DOM");
+
+// Rule 4 also covers "snapshot cleared by canvas resize, before next paint". Clears all records
+// for the canvas, gives a deterministic no-snapshot state on a child that previously qualified.
+test(() => {
+    const c = canvasEl("ok-canvas");
+    c.width = c.width + 1;
+    assert_throws_dom("InvalidStateError", () => {
+        c.getContext("2d").drawElementImage(el("ok-direct-child"), 0, 0);
+    });
+}, "drawElementImage throws InvalidStateError when no snapshot has been recorded (post-resize, pre-paint)");
+
+// Order-of-checks: nested-canvas wins over direct-child. The inner canvas with
+// a *grandchild* must report NotSupportedError, not TypeError.
+test(() => {
+    // Reuse the existing nested structure; inner-canvas has inner-direct-child as child.
+    // Append a grandchild to it transiently for this assertion.
+    const grandchild = document.createElement("div");
+    el("inner-direct-child").appendChild(grandchild);
+    try {
+        assert_throws_dom("NotSupportedError", () => {
+            ctx("inner-canvas").drawElementImage(grandchild, 0, 0);
+        });
+    } finally {
+        grandchild.remove();
+    }
+}, "Order: nested-canvas (NotSupportedError) wins over non-direct-child (TypeError)");
+
+// Geometry-degenerate behaviour (NaN dx, zero destSize) is the silent identity-matrix path,
+// proven separately in drawElementImage-{4,8}arg-edge-cases.html. TB4 only has to ensure
+// it doesn't intercept those calls before geometry runs — the eligibility tests above are
+// sufficient signal for that, since geometry checks live downstream of validation in
+// CanvasRenderingContext2DBase::drawElementImageInternal.
+
+</script>
+</body>

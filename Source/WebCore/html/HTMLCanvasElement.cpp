@@ -41,6 +41,7 @@
 #include "DisplayList.h"
 #include "DocumentQuirks.h"
 #include "DocumentView.h"
+#include "DrawElementImageEligibility.h"
 #include "DrawElementImageMath.h"
 #include "ElementInlines.h"
 #include "ElementChildIteratorInlines.h"
@@ -624,16 +625,7 @@ void HTMLCanvasElement::clearAllCanvasChildPaintRecords()
 
 ExceptionOr<CanvasChildPaintRecord*> HTMLCanvasElement::validateChildForDrawElementImage(Element& element)
 {
-    // Order matches Blink's VerifyDrawElementImageEligibility. TB4 (#9) will replace
-    // this with the full validator.
-    if (!hasAttributeWithoutSynchronization(HTMLNames::layoutsubtreeAttr))
-        return Exception { ExceptionCode::InvalidStateError, "Canvas is not in layoutsubtree mode"_s };
-    if (element.parentNode() != this)
-        return Exception { ExceptionCode::InvalidStateError, "Element is not a direct child of the canvas"_s };
-    auto* record = canvasChildPaintRecord(element.nodeIdentifier());
-    if (!record)
-        return Exception { ExceptionCode::InvalidStateError, "No snapshot recorded for element"_s };
-    return record;
+    return verifyDrawElementImageEligibility(*this, element);
 }
 
 TransformationMatrix HTMLCanvasElement::computeAlignmentMatrixForChild(const CanvasChildPaintRecord& record, const AffineTransform& drawTransform) const

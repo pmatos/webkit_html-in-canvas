@@ -91,10 +91,8 @@ public:
     void clearCanvasChildPaintRecord(NodeIdentifier);
     void clearAllCanvasChildPaintRecords();
 
-    // Shared eligibility + math for drawElementImage (TB1b/TB2a/TB3a) and
-    // getElementTransform (TB3b). Returns the snapshot record on success,
-    // throws InvalidStateError on layoutsubtree/parent/record failures.
-    // TB4 (#9) will subsume the validator with the full Blink-parity version.
+    // Shared eligibility check for drawElementImage / getElementTransform / captureElementImage.
+    // Thin shim over verifyDrawElementImageEligibility (TB4 / issue #9).
     ExceptionOr<CanvasChildPaintRecord*> validateChildForDrawElementImage(Element&);
     TransformationMatrix computeAlignmentMatrixForChild(const CanvasChildPaintRecord&, const AffineTransform& drawTransform) const;
 

@@ -159,11 +159,22 @@ static bool shouldDisableMutationEvents(const std::string& pathOrURL)
 
 static bool shouldEnableCanvasDrawElement(const std::string& pathOrURL)
 {
-    // Narrow scope to tests TB3a is responsible for. Broader corpus enrollment
-    // would expose unrelated failures from APIs not yet implemented (requestPaint,
-    // captureElementImage, ...) and a pre-existing crash in canvas-subtree
+    // Narrow scope to tests we know land green at the current slice. Broader corpus
+    // enrollment would expose unrelated failures from APIs not yet implemented
+    // (requestPaint, captureElementImage, ...) and a pre-existing crash in canvas-subtree
     // hit-testing. Each subsequent slice extends this list.
-    return pathContains(pathOrURL, "wpt_internal/html/canvas/drawElementImage/draw-element-image-returned-matrix");
+    //
+    // TB4 (issue #9) added draw-element-image-detached. Other corpus error-condition tests
+    // are gated:
+    //  * error-conditions, draw-element-image-display-none, drawElementImage-zero-size
+    //    block on TB5b (waitForCanvasPaint → requestPaint).
+    //  * error-conditions also blocks on TB6 (captureElementImage).
+    //  * draw-element-image-empty mutates the layoutsubtree attribute mid-script and
+    //    awaits canvas.onpaint without driving a rAF; the test currently times out under
+    //    the WebKit testharness because onpaint dispatch needs an explicit paint trigger
+    //    after the attribute toggle. Re-enable when that interaction is sorted.
+    return pathContains(pathOrURL, "wpt_internal/html/canvas/drawElementImage/draw-element-image-returned-matrix")
+        || pathContains(pathOrURL, "wpt_internal/html/canvas/drawElementImage/draw-element-image-detached");
 }
 
 TestFeatures hardcodedFeaturesBasedOnPathForTest(const TestCommand& command)

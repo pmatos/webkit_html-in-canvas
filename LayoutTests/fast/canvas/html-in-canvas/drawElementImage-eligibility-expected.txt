@@ -1,0 +1,18 @@
+
+
+
+
+
+PASS TB4 IDL: drawElementImage and getElementTransform are exposed under the runtime preference
+PASS drawElementImage throws TypeError for a non-direct child (grandchild)
+PASS getElementTransform throws TypeError for a non-direct child (grandchild)
+PASS drawElementImage throws TypeError when element is a child of a different canvas
+PASS drawElementImage throws InvalidStateError when canvas lacks layoutsubtree
+PASS getElementTransform throws InvalidStateError when canvas lacks layoutsubtree
+PASS drawElementImage throws NotSupportedError when canvas is nested in another <canvas layoutsubtree>
+PASS getElementTransform throws NotSupportedError when canvas is nested in another <canvas layoutsubtree>
+PASS drawElementImage throws InvalidStateError when canvas is display:none from initial DOM
+PASS drawElementImage throws InvalidStateError when child is display:none from initial DOM
+PASS drawElementImage throws InvalidStateError when no snapshot has been recorded (post-resize, pre-paint)
+PASS Order: nested-canvas (NotSupportedError) wins over non-direct-child (TypeError)
+
