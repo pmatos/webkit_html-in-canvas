@@ -53,6 +53,7 @@ class BlobCallback;
 class CanvasRenderingContext;
 class CanvasRenderingContext2D;
 class DOMMatrix;
+class ElementImage;
 class GPU;
 class GPUCanvasContext;
 class GraphicsContext;
@@ -85,9 +86,11 @@ public:
 
     // <canvas layoutsubtree> snapshot pipeline (TB1b). Populated during paint by the
     // recording walk in RenderLayer::paintList; consumed by drawElementImage.
+    // Records are RefCounted so a record can be shared between this map and any
+    // ElementImage objects produced by captureElementImage (TB6).
     size_t canvasChildPaintRecordCount() const { return m_canvasChildPaintRecords.size(); }
-    CanvasChildPaintRecord* canvasChildPaintRecord(NodeIdentifier);
-    void setCanvasChildPaintRecord(Element&, NodeIdentifier, std::unique_ptr<CanvasChildPaintRecord>);
+    RefPtr<CanvasChildPaintRecord> canvasChildPaintRecord(NodeIdentifier);
+    void setCanvasChildPaintRecord(Element&, NodeIdentifier, Ref<CanvasChildPaintRecord>&&);
     void clearCanvasChildPaintRecord(NodeIdentifier);
     void clearAllCanvasChildPaintRecords();
 
@@ -105,6 +108,7 @@ public:
     TransformationMatrix computeAlignmentMatrixForChild(const CanvasChildPaintRecord&, const AffineTransform& drawTransform) const;
 
     ExceptionOr<Ref<DOMMatrix>> getElementTransform(Element&, DOMMatrix& drawTransform);
+    ExceptionOr<Ref<ElementImage>> captureElementImage(Element&);
 
     CanvasRenderingContext* renderingContext() const final { return m_context.get(); }
     ExceptionOr<std::optional<RenderingContext>> getContext(JSC::JSGlobalObject&, const String& contextId, FixedVector<JSC::Strong<JSC::Unknown>>&& arguments);
@@ -222,7 +226,7 @@ private:
     PlatformDynamicRangeLimit m_dynamicRangeLimit { PlatformDynamicRangeLimit::initialValue() };
     mutable RefPtr<Image> m_copiedImage; // FIXME: This is temporary for platforms that have to copy the image buffer to render (and for CSSCanvasValue).
 
-    HashMap<NodeIdentifier, std::unique_ptr<CanvasChildPaintRecord>> m_canvasChildPaintRecords;
+    HashMap<NodeIdentifier, Ref<CanvasChildPaintRecord>> m_canvasChildPaintRecords;
 
     // TB5b: per-canvas changed-child set built up since the last paint event.
     // Keyed by NodeIdentifier (matches m_canvasChildPaintRecords); the

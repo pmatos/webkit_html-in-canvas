@@ -26,7 +26,9 @@
 // https://github.com/whatwg/html/pull/11588 — html-in-canvas
 // TB1b: 2-arg Element overload. TB2a: 4-arg overload (destination scale).
 // TB2b: 6/8-arg overloads (source-rect cropping).
-// (Element or ElementImage) union lands in TB6.
+// TB6: ElementImage source (3-arg overload — the captured snapshot already
+// fixes a single intrinsic size, so the 4/6/8-arg geometry variants aren't
+// needed here per the WICG spec).
 [
     EnabledBySetting=CanvasDrawElementEnabled
 ] interface mixin CanvasDrawElementImage {
@@ -34,4 +36,5 @@
     [RaisesException] DOMMatrix drawElementImage(Element element, unrestricted double dx, unrestricted double dy, unrestricted double dwidth, unrestricted double dheight);
     [RaisesException] DOMMatrix drawElementImage(Element element, unrestricted double sx, unrestricted double sy, unrestricted double sw, unrestricted double sh, unrestricted double dx, unrestricted double dy);
     [RaisesException] DOMMatrix drawElementImage(Element element, unrestricted double sx, unrestricted double sy, unrestricted double sw, unrestricted double sh, unrestricted double dx, unrestricted double dy, unrestricted double dwidth, unrestricted double dheight);
+    [RaisesException] DOMMatrix drawElementImage(ElementImage elementImage, unrestricted double dx, unrestricted double dy);
 };

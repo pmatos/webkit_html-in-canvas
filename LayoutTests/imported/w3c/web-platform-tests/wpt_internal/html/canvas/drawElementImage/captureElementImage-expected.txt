@@ -1,8 +1,6 @@
 
-Harness Error (TIMEOUT), message = null
-
-FAIL captureElementImage size should be the most recently painted size promise_test: Unhandled rejection with value: object "TypeError: canvas.captureElementImage is not a function. (In 'canvas.captureElementImage(child)', 'canvas.captureElementImage' is undefined)"
-FAIL captureElementImage should return an object that can be drawn promise_test: Unhandled rejection with value: object "TypeError: canvas.captureElementImage is not a function. (In 'canvas.captureElementImage(child)', 'canvas.captureElementImage' is undefined)"
-TIMEOUT ElementImage.close() invalidates the image for drawing Test timed out
-NOTRUN captureElementImage should throw if called on a nested canvas
+PASS captureElementImage size should be the most recently painted size
+PASS captureElementImage should return an object that can be drawn
+PASS ElementImage.close() invalidates the image for drawing
+PASS captureElementImage should throw if called on a nested canvas
 

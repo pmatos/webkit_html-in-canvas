@@ -130,6 +130,15 @@ auto InspectorCanvasArgumentProcessor<IDLInterface<HTMLCanvasElement>>::operator
     return {{ context.valueIndexForData(argument), RecordingSwizzleType::Image }};
 }
 
+auto InspectorCanvasArgumentProcessor<IDLInterface<ElementImage>>::operator()(InspectorCanvas& context, const Ref<ElementImage>&) -> std::optional<InspectorCanvasProcessedArgument>
+{
+    // ElementImage isn't tracked in InspectorCanvas's DuplicateDataVariant (TB6); the
+    // recording inspector can't reconstruct one anyway because the snapshot is an
+    // opaque main-thread display list. Record a bare "ElementImage" marker, same
+    // pattern as Element above.
+    return {{ context.valueIndexForData("ElementImage"_s), RecordingSwizzleType::None }};
+}
+
 auto InspectorCanvasArgumentProcessor<IDLInterface<CSSStyleImageValue>>::operator()(InspectorCanvas& context, const Ref<CSSStyleImageValue>& argument) -> std::optional<InspectorCanvasProcessedArgument>
 {
     return {{ context.valueIndexForData(argument), RecordingSwizzleType::Image }};

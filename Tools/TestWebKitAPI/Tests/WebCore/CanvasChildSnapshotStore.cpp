@@ -55,10 +55,10 @@ static Ref<Document> createDocument()
 
 // Helper to fabricate an empty CanvasChildPaintRecord for tests that exercise the store
 // API but don't care about pixel content.
-static std::unique_ptr<CanvasChildPaintRecord> makeEmptyRecord()
+static Ref<CanvasChildPaintRecord> makeEmptyRecord()
 {
     auto displayList = DisplayList::DisplayList::create({ });
-    return makeUnique<CanvasChildPaintRecord>(WTF::move(displayList), CanvasChildPaintState { });
+    return CanvasChildPaintRecord::create(WTF::move(displayList), CanvasChildPaintState { });
 }
 
 TEST(CanvasChildSnapshotStore, EmptyByDefault)

@@ -197,6 +197,7 @@ namespace WebCore {
     macro(DigitalCredential) \
     macro(DocumentTimeline) \
     macro(DynamicsCompressorNode) \
+    macro(ElementImage) \
     macro(ElementInternals) \
     macro(EncodedAudioChunk) \
     macro(EncodedVideoChunk) \

@@ -42,6 +42,7 @@
 #include "DocumentQuirks.h"
 #include "DocumentView.h"
 #include "DrawElementImageEligibility.h"
+#include "ElementImage.h"
 #include "DrawElementImageMath.h"
 #include "ElementInlines.h"
 #include "ElementChildIteratorInlines.h"
@@ -587,10 +588,12 @@ void HTMLCanvasElement::didDraw(const std::optional<FloatRect>& rect, ShouldAppl
     CanvasBase::didDraw(rect, shouldApplyPostProcessingToDirtyRect);
 }
 
-CanvasChildPaintRecord* HTMLCanvasElement::canvasChildPaintRecord(NodeIdentifier id)
+RefPtr<CanvasChildPaintRecord> HTMLCanvasElement::canvasChildPaintRecord(NodeIdentifier id)
 {
     auto it = m_canvasChildPaintRecords.find(id);
-    return it == m_canvasChildPaintRecords.end() ? nullptr : it->value.get();
+    if (it == m_canvasChildPaintRecords.end())
+        return nullptr;
+    return it->value.copyRef();
 }
 
 // TB5b.1: WebKit's RenderLayer::paintLayer dispatches multiple PaintPhases per
@@ -654,7 +657,7 @@ static String canvasChildPaintFingerprint(const DisplayList::DisplayList& displa
     return builder.toString();
 }
 
-void HTMLCanvasElement::setCanvasChildPaintRecord(Element& child, NodeIdentifier id, std::unique_ptr<CanvasChildPaintRecord> record)
+void HTMLCanvasElement::setCanvasChildPaintRecord(Element& child, NodeIdentifier id, Ref<CanvasChildPaintRecord>&& record)
 {
     // Schedule a paint event only when the new snapshot's paint-meaningful
     // content differs from the existing one. The recording walk re-records on
@@ -664,7 +667,7 @@ void HTMLCanvasElement::setCanvasChildPaintRecord(Element& child, NodeIdentifier
     // initial-load baseline.
     auto it = m_canvasChildPaintRecords.find(id);
     bool contentChanged = false;
-    if (it != m_canvasChildPaintRecords.end() && record && it->value) {
+    if (it != m_canvasChildPaintRecords.end()) {
         contentChanged = canvasChildPaintFingerprint(it->value->displayList())
             != canvasChildPaintFingerprint(record->displayList());
     }
@@ -774,6 +777,23 @@ ExceptionOr<Ref<DOMMatrix>> HTMLCanvasElement::getElementTransform(Element& elem
     };
     auto matrix = computeAlignmentMatrixForChild(*recordOrException.releaseReturnValue(), draw);
     return DOMMatrix::create(WTF::move(matrix), DOMMatrixReadOnly::Is2D::Yes);
+}
+
+ExceptionOr<Ref<ElementImage>> HTMLCanvasElement::captureElementImage(Element& element)
+{
+    // Same preconditions as drawElementImage / getElementTransform: rule out nested
+    // canvases (NotSupportedError), non-direct children (TypeError), missing
+    // layoutsubtree (InvalidStateError) and missing-snapshot (InvalidStateError).
+    auto recordOrException = validateChildForDrawElementImage(element);
+    if (recordOrException.hasException())
+        return recordOrException.releaseException();
+    // Re-fetch as a Ref<> so we can hand it to ElementImage. validateChildForDrawElementImage
+    // returns the raw pointer it found in our map; the second lookup is cheap and lets the
+    // eligibility function keep its raw-pointer signature (relied on by all other callers).
+    auto record = canvasChildPaintRecord(element.nodeIdentifier());
+    if (!record)
+        return Exception { ExceptionCode::InvalidStateError, "No snapshot recorded for element."_s };
+    return ElementImage::create(record.releaseNonNull());
 }
 
 void HTMLCanvasElement::childrenChanged(const ChildChange& change)

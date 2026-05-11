@@ -54,6 +54,7 @@ typedef (
     [CEReactions=NotNeeded, Reflect, EnabledBySetting=CanvasDrawElementEnabled] attribute boolean layoutSubtree;
 
     [RaisesException, EnabledBySetting=CanvasDrawElementEnabled] DOMMatrix getElementTransform(Element element, DOMMatrix drawTransform);
+    [RaisesException, EnabledBySetting=CanvasDrawElementEnabled, NewObject] ElementImage captureElementImage(Element element);
 
     [EnabledBySetting=CanvasDrawElementEnabled] attribute EventHandler onpaint;
     [EnabledBySetting=CanvasDrawElementEnabled] undefined requestPaint();

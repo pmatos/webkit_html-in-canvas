@@ -28,6 +28,7 @@
 #include "FloatPoint.h"
 #include "FloatSize.h"
 #include <wtf/Ref.h>
+#include <wtf/RefCounted.h>
 #include <wtf/TZoneMalloc.h>
 
 namespace WebCore {
@@ -44,25 +45,41 @@ struct CanvasChildPaintState {
     FloatSize canvasBackingStoreSize; // canvas.width/height in device px
     float childZoom { 1.0f }; // CSS effective zoom on the child
     FloatPoint transformOrigin; // element transform-origin, unzoomed CSS px, element-local
+    // TB6: the display list's draw operations are in absolute (document) coordinates,
+    // because RenderLayer::paintLayer applies the layer's offset to the recorder's CTM.
+    // Replay needs to subtract this origin so drawElementImage(source, dx, dy) lands
+    // pixels at (dx, dy) — the spec's "element image" semantics — independent of the
+    // canvas's document position. Captured as borderBox.location() expressed in
+    // recording-space (the canvas's absolute origin + the child's local borderBox.x/y).
+    FloatPoint recordingOrigin;
 };
 
 // Snapshot of one direct child of a <canvas layoutsubtree>: a recorded display list plus
 // the metadata needed to project it onto the canvas grid at replay time.
 //
+// RefCounted so a record can be shared between the canvas's snapshot map and any
+// ElementImage objects produced by canvas.captureElementImage(). The wrapped
+// DisplayList is itself a Ref<const DisplayList::DisplayList>, so two records
+// pointing at the same display list pay one allocation, not two.
+//
 // Thread-safety: the wrapped DisplayList is main-thread-only (see DisplayList.h). TB7's
 // ElementImage transfer will introduce a serialised companion form rather than retrofit
 // this struct.
-class CanvasChildPaintRecord {
+class CanvasChildPaintRecord : public RefCounted<CanvasChildPaintRecord> {
     WTF_MAKE_TZONE_ALLOCATED(CanvasChildPaintRecord);
-    WTF_MAKE_NONCOPYABLE(CanvasChildPaintRecord);
 public:
-    CanvasChildPaintRecord(Ref<const DisplayList::DisplayList>&&, CanvasChildPaintState);
+    static Ref<CanvasChildPaintRecord> create(Ref<const DisplayList::DisplayList>&& displayList, CanvasChildPaintState state)
+    {
+        return adoptRef(*new CanvasChildPaintRecord(WTF::move(displayList), state));
+    }
     ~CanvasChildPaintRecord();
 
     const DisplayList::DisplayList& displayList() const { return m_displayList.get(); }
     const CanvasChildPaintState& state() const { return m_state; }
 
 private:
+    CanvasChildPaintRecord(Ref<const DisplayList::DisplayList>&&, CanvasChildPaintState);
+
     Ref<const DisplayList::DisplayList> m_displayList;
     CanvasChildPaintState m_state;
 };

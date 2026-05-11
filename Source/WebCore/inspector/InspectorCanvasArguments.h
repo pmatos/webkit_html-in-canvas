@@ -32,6 +32,7 @@
 #include "DOMMatrix2DInit.h"
 #include "DOMPointInit.h"
 #include "Element.h"
+#include "ElementImage.h"
 #include "HTMLCanvasElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLVideoElement.h"
@@ -197,6 +198,10 @@ template<> struct InspectorCanvasArgumentProcessor<IDLInterface<SVGImageElement>
 
 template<> struct InspectorCanvasArgumentProcessor<IDLInterface<HTMLCanvasElement>> {
     std::optional<InspectorCanvasProcessedArgument> operator()(InspectorCanvas&, const Ref<HTMLCanvasElement>&);
+};
+
+template<> struct InspectorCanvasArgumentProcessor<IDLInterface<ElementImage>> {
+    std::optional<InspectorCanvasProcessedArgument> operator()(InspectorCanvas&, const Ref<ElementImage>&);
 };
 
 template<> struct InspectorCanvasArgumentProcessor<IDLInterface<CSSStyleImageValue>> {

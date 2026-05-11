@@ -61,6 +61,8 @@
 #include "GlyphBuffer.h"
 #include "Gradient.h"
 #include "GraphicsClient.h"
+#include "CanvasChildPaintRecord.h"
+#include "ElementImage.h"
 #include "HTMLCanvasElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLVideoElement.h"
@@ -1709,15 +1711,18 @@ ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImageIntern
     float scaleX = wantScale ? destSize.width() / replaySrcSize.width() : 1.0f;
     float scaleY = wantScale ? destSize.height() / replaySrcSize.height() : 1.0f;
 
-    // Replay. The canvas's current CTM is already baked into drawingContext()'s state; we
-    // clip in canvas coords first, then translate the replay origin, then scale child-local
-    // units into canvas-grid units, then (for source-cropping) translate by -(sx,sy) so the
-    // source rect's top-left lands at the destination origin, then replay the display list.
+    // Replay. The canvas's current CTM is already baked into drawingContext()'s state.
+    // The display list is in document-absolute coordinates (paintLayer applies the
+    // layer offset to the recorder's CTM at TB1b recording time), so we subtract
+    // state().recordingOrigin from the dest translation to land the source's origin
+    // at (dx, dy). Then: clip, scale child-local units into canvas-grid units (for
+    // 4/8-arg), translate by -(sx, sy) for source-cropping (6/8-arg), replay.
     if (auto* context = drawingContext()) {
         GraphicsContextStateSaver saver(*context);
         FloatRect destRect { static_cast<float>(dx), static_cast<float>(dy), destSize.width(), destSize.height() };
         context->clip(destRect);
-        context->translate(static_cast<float>(dx), static_cast<float>(dy));
+        context->translate(static_cast<float>(dx) - record->state().recordingOrigin.x(),
+                           static_cast<float>(dy) - record->state().recordingOrigin.y());
         if (wantScale && (scaleX != 1.0f || scaleY != 1.0f))
             context->scale(FloatSize { scaleX, scaleY });
         if (sourceRect)
@@ -1738,6 +1743,44 @@ ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImageIntern
     if (sourceRect)
         drawTransform.translate(-sourceRect->x(), -sourceRect->y());
 
+    auto matrix = canvasElement->computeAlignmentMatrixForChild(*record, drawTransform);
+    return DOMMatrix::create(WTF::move(matrix), DOMMatrixReadOnly::Is2D::Yes);
+}
+
+ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImage(ElementImage& elementImage, double dx, double dy)
+{
+    // TB6: ElementImage-source overload. The captured snapshot already fixes the
+    // source's geometry at capture time, so we don't reach back into the canvas's
+    // live record map (and an ElementImage from canvasA can be drawn into canvasB).
+    if (elementImage.isClosed())
+        return Exception { ExceptionCode::InvalidStateError, "A closed ElementImage cannot be drawn."_s };
+
+    RefPtr canvasElement = dynamicDowncast<HTMLCanvasElement>(canvasBase());
+    if (!canvasElement)
+        return Exception { ExceptionCode::InvalidStateError, "drawElementImage requires an HTMLCanvasElement context"_s };
+
+    auto* record = elementImage.record();
+    ASSERT(record); // !isClosed() guaranteed it.
+
+    if (!std::isfinite(dx) || !std::isfinite(dy))
+        return DOMMatrix::create(TransformationMatrix { }, DOMMatrixReadOnly::Is2D::Yes);
+
+    auto& recordState = record->state();
+    auto& boxSize = recordState.boxSize;
+    if (auto* context = drawingContext()) {
+        GraphicsContextStateSaver saver(*context);
+        FloatRect destRect { static_cast<float>(dx), static_cast<float>(dy), boxSize.width(), boxSize.height() };
+        context->clip(destRect);
+        // Translate so the recording's origin (the child's absolute borderBox.location())
+        // lands at (dx, dy). TB6 stores recordingOrigin in state for this purpose.
+        context->translate(static_cast<float>(dx) - recordState.recordingOrigin.x(),
+                           static_cast<float>(dy) - recordState.recordingOrigin.y());
+        context->drawDisplayList(record->displayList());
+        didDraw(destRect);
+    }
+
+    AffineTransform drawTransform = state().transform;
+    drawTransform.translate(dx, dy);
     auto matrix = canvasElement->computeAlignmentMatrixForChild(*record, drawTransform);
     return DOMMatrix::create(WTF::move(matrix), DOMMatrixReadOnly::Is2D::Yes);
 }

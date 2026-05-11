@@ -61,6 +61,7 @@ class CanvasLayerContextSwitcher;
 class CanvasGradient;
 class DOMMatrix;
 class Element;
+class ElementImage;
 class FloatRect;
 class GraphicsContext;
 class ImageData;
@@ -218,6 +219,7 @@ public:
     ExceptionOr<Ref<DOMMatrix>> drawElementImage(Element&, double dx, double dy, double dwidth, double dheight);
     ExceptionOr<Ref<DOMMatrix>> drawElementImage(Element&, double sx, double sy, double sw, double sh, double dx, double dy);
     ExceptionOr<Ref<DOMMatrix>> drawElementImage(Element&, double sx, double sy, double sw, double sh, double dx, double dy, double dwidth, double dheight);
+    ExceptionOr<Ref<DOMMatrix>> drawElementImage(ElementImage&, double dx, double dy);
 
     void clearCanvas();
 

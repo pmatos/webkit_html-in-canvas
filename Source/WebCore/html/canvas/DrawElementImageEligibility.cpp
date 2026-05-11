@@ -71,11 +71,11 @@ ExceptionOr<CanvasChildPaintRecord*> verifyDrawElementImageEligibility(HTMLCanva
     // either the child (skipped) or the canvas (no walk runs) and the "no paint cycle
     // yet" case (draw-element-image-empty.html:19-22, draw-element-image-detached.html:27-30,
     // draw-element-image-display-none.html:38-45).
-    auto* record = canvas.canvasChildPaintRecord(element.nodeIdentifier());
+    auto record = canvas.canvasChildPaintRecord(element.nodeIdentifier());
     if (!record)
         return Exception { ExceptionCode::InvalidStateError, "No snapshot recorded for element."_s };
 
-    return record;
+    return record.get();
 }
 
 } // namespace WebCore

@@ -1722,6 +1722,7 @@ html/canvas/CanvasRenderingContext2DBase.cpp @header:RenderStyleGetters
 html/canvas/CanvasStyle.cpp
 html/canvas/DrawElementImageEligibility.cpp
 html/canvas/DrawElementImageMath.cpp
+html/canvas/ElementImage.cpp
 html/canvas/EXTBlendMinMax.cpp
 html/canvas/EXTClipControl.cpp
 html/canvas/EXTColorBufferFloat.cpp

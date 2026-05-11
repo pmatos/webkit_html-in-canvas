@@ -1482,6 +1482,7 @@ set(WebCore_NON_SVG_IDL_FILES
     html/canvas/CanvasTextDrawingStyles.idl
     html/canvas/CanvasTransform.idl
     html/canvas/CanvasUserInterface.idl
+    html/canvas/ElementImage.idl
     html/canvas/ImageBitmapRenderingContext.idl
     html/canvas/ImageBitmapRenderingContextSettings.idl
     html/canvas/ImageSmoothingQuality.idl

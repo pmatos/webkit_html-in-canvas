@@ -146,8 +146,8 @@ TEST(DrawElementImageEligibility, EligibleSuccess)
     auto child = HTMLDivElement::create(document);
     canvas->appendChild(child);
     auto displayList = DisplayList::DisplayList::create({ });
-    auto record = makeUnique<CanvasChildPaintRecord>(WTF::move(displayList), CanvasChildPaintState { });
-    auto* recordPtr = record.get();
+    auto record = CanvasChildPaintRecord::create(WTF::move(displayList), CanvasChildPaintState { });
+    auto* recordPtr = record.ptr();
     canvas->setCanvasChildPaintRecord(child.get(), child->nodeIdentifier(), WTF::move(record));
 
     auto result = verifyDrawElementImageEligibility(canvas.get(), child.get());

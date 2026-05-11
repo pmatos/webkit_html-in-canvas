@@ -1,4 +1,4 @@
 
-FAIL OffscreenCanvas.drawElementImage should draw an ElementImage promise_test: Unhandled rejection with value: object "TypeError: canvas.captureElementImage is not a function. (In 'canvas.captureElementImage(child)', 'canvas.captureElementImage' is undefined)"
+FAIL OffscreenCanvas.drawElementImage should draw an ElementImage promise_test: Unhandled rejection with value: object "InvalidStateError: drawElementImage requires an HTMLCanvasElement context"
 PASS Passing an Element to OffscreenCanvas methods on the main thread throws InvalidStateError
 

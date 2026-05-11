@@ -4083,16 +4083,24 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
                 childZoom > 0 ? zoomedOrigin.x() / childZoom : zoomedOrigin.x(),
                 childZoom > 0 ? zoomedOrigin.y() / childZoom : zoomedOrigin.y(),
             };
+            // TB6: the display list captures paint operations in document-absolute
+            // coordinates (paintLayer applies the layer's offset to the recorder's CTM).
+            // Stash the recording origin so drawElementImage can subtract it at replay
+            // time and land pixels at (dx, dy) regardless of the canvas's document
+            // position. localToAbsolute({ borderBox.location() }) returns the same
+            // origin paintLayer applies.
+            FloatPoint recordingOrigin = renderer->localToAbsolute(FloatPoint { borderBox.location() }, { MapCoordinatesMode::UseTransforms });
             CanvasChildPaintState state {
                 FloatSize { borderBox.size() },
                 FloatSize { canvasElement.size() },
                 childZoom,
                 transformOrigin,
+                recordingOrigin,
             };
             canvasElement.setCanvasChildPaintRecord(
                 *element,
                 element->nodeIdentifier(),
-                makeUnique<CanvasChildPaintRecord>(WTF::move(displayList), state));
+                CanvasChildPaintRecord::create(WTF::move(displayList), state));
             // TB5a: setCanvasChildPaintRecord internally schedules the canvas for a
             // `paint` event when the new snapshot differs from the previously stored
             // one. The decision is made there (not here) because it depends on the
