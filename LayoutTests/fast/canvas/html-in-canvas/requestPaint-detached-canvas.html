@@ -1,0 +1,29 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>TB5b: requestPaint() on a detached canvas is a silent no-op</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<script>
+'use strict';
+async function waitForOneFrame() {
+  await new Promise(requestAnimationFrame);
+  await new Promise(setTimeout);
+}
+
+promise_test(async () => {
+  const canvas = document.createElement('canvas');
+  canvas.setAttribute('layoutsubtree', '');
+  let cnt = 0;
+  canvas.onpaint = () => { cnt++; };
+
+  // Detached canvas: requestPaint() must not throw and must not fire.
+  canvas.requestPaint();
+  await waitForOneFrame();
+  assert_equals(cnt, 0, 'detached canvas does not fire onpaint after requestPaint');
+
+  // Attaching the canvas and calling requestPaint again must fire.
+  document.body.appendChild(canvas);
+  canvas.requestPaint();
+  await waitForOneFrame();
+  assert_equals(cnt, 1, 'attached canvas fires onpaint after requestPaint');
+}, 'TB5b: requestPaint() on a detached canvas is a no-op; works once attached');
+</script>

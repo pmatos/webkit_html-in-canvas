@@ -1,0 +1,27 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>TB5b: requestPaint() followed by sync remove does not fire</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<canvas id="c" layoutsubtree></canvas>
+<script>
+'use strict';
+async function waitForOneFrame() {
+  await new Promise(requestAnimationFrame);
+  await new Promise(setTimeout);
+}
+
+promise_test(async () => {
+  const canvas = document.getElementById('c');
+  let cnt = 0;
+  canvas.onpaint = () => { cnt++; };
+  canvas.requestPaint();
+  // Synchronous remove before the rendering update.
+  canvas.remove();
+  await waitForOneFrame();
+  assert_equals(cnt, 0, 'requestPaint + sync remove must not fire');
+  // Re-attach: still must not re-fire (force flag should be drained).
+  document.body.appendChild(canvas);
+  await waitForOneFrame();
+  assert_equals(cnt, 0, 're-attach without a fresh requestPaint must not fire');
+}, 'TB5b: requestPaint() then sync remove() drains force flag without firing');
+</script>

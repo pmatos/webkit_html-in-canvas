@@ -1,0 +1,3 @@
+
+PASS TB5b: changedElements appears in DOM tree order, not mutation order
+

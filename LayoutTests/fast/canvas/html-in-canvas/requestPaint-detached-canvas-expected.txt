@@ -1,0 +1,3 @@
+
+PASS TB5b: requestPaint() on a detached canvas is a no-op; works once attached
+

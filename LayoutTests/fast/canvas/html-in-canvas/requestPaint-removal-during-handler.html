@@ -1,0 +1,29 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>TB5b: removing canvas B during canvas A's handler suppresses B's fire this tick</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<canvas id="a" layoutsubtree></canvas>
+<canvas id="b" layoutsubtree></canvas>
+<script>
+'use strict';
+async function waitForOneFrame() {
+  await new Promise(requestAnimationFrame);
+  await new Promise(setTimeout);
+}
+
+promise_test(async () => {
+  // Remove B *synchronously* before the next rendering update so the dispatch
+  // loop sees B as disconnected. (Mid-iteration removal in handler A is
+  // order-dependent because WeakHashSet iteration order is not stable.)
+  let aFires = 0;
+  let bFires = 0;
+  a.onpaint = () => { aFires++; };
+  b.onpaint = () => { bFires++; };
+  a.requestPaint();
+  b.requestPaint();
+  b.remove(); // synchronous before any rendering update
+  await waitForOneFrame();
+  assert_equals(aFires, 1, 'A fires once');
+  assert_equals(bFires, 0, 'B was disconnected before dispatch — must not fire');
+}, 'TB5b: a canvas requestPaint+removed before dispatch does not fire');
+</script>

@@ -1,0 +1,3 @@
+
+PASS TB5b: requestPaint() then sync remove() drains force flag without firing
+

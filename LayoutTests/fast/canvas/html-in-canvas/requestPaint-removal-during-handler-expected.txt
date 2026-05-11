@@ -1,0 +1,3 @@
+
+PASS TB5b: a canvas requestPaint+removed before dispatch does not fire
+

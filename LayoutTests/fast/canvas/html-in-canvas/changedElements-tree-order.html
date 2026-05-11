@@ -1,0 +1,39 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>TB5b: changedElements is emitted in DOM tree order</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<style>
+  div { background: blue; width: 30px; height: 30px; }
+  .green { background: green; }
+</style>
+<canvas id="c" layoutsubtree>
+  <div id="c1"></div>
+  <div id="c2"></div>
+  <div id="c3"></div>
+</canvas>
+<script>
+'use strict';
+async function waitForOneFrame() {
+  await new Promise(requestAnimationFrame);
+  await new Promise(setTimeout);
+}
+
+promise_test(async () => {
+  await waitForOneFrame();
+  let lastChanged = [];
+  c.onpaint = (e) => { lastChanged = e.changedElements; };
+  // Mutate in REVERSE DOM order to prove that changedElements is recovered
+  // from DOM tree order rather than from insertion/hash order.
+  c3.classList.add('green');
+  c1.classList.add('green');
+  await waitForOneFrame();
+  assert_equals(lastChanged.length >= 2, true, 'at least c1 and c3 changed');
+  // c2 may or may not appear depending on the snapshot diff sensitivity; what
+  // matters is that c1 comes before c3.
+  const i1 = lastChanged.indexOf(c1);
+  const i3 = lastChanged.indexOf(c3);
+  assert_true(i1 !== -1, 'c1 is in changedElements');
+  assert_true(i3 !== -1, 'c3 is in changedElements');
+  assert_less_than(i1, i3, 'c1 appears before c3 in DOM tree order');
+}, 'TB5b: changedElements appears in DOM tree order, not mutation order');
+</script>
