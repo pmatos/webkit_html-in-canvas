@@ -1,5 +1,3 @@
 
-Harness Error (TIMEOUT), message = null
-
-TIMEOUT canvas drawElementImage should not throw on empty elements. Test timed out
+PASS canvas drawElementImage should not throw on empty elements.
 

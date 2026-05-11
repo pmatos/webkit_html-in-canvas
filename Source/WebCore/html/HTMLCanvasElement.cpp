@@ -659,22 +659,32 @@ static String canvasChildPaintFingerprint(const DisplayList::DisplayList& displa
 
 void HTMLCanvasElement::setCanvasChildPaintRecord(Element& child, NodeIdentifier id, Ref<CanvasChildPaintRecord>&& record)
 {
-    // Schedule a paint event only when the new snapshot's paint-meaningful
-    // content differs from the existing one. The recording walk re-records on
-    // every canvas paint regardless of invalidation, so a content-identical
-    // replay must NOT fire (matches "should not fire without changes"). For
-    // the first-ever recording (no existing entry) suppress too — that's the
-    // initial-load baseline.
+    // Schedule a paint event when either (a) the new snapshot's paint-meaningful
+    // content differs from the existing one, or (b) this is the first-ever
+    // recording for this child (it == end). Case (b) covers the
+    // draw-element-image-empty.html flow: layoutsubtree is toggled on
+    // mid-script, the test attaches `canvas.onpaint = r` *before* the next
+    // rendering tick, and expects the very first paint event to resolve its
+    // promise. Suppressing first-call fires the way TB5a did would time the
+    // test out. The existing "should not fire without changes" subtest of
+    // onpaint.html still passes because its handler is only attached *after*
+    // the initial waitForOneFrame() lets the first paint walk happen with no
+    // listener — the first-call fire goes to nobody.
+    //
+    // The recording walk re-records on every canvas paint regardless of
+    // invalidation, so a content-identical replay (case neither (a) nor (b))
+    // must NOT fire.
     auto it = m_canvasChildPaintRecords.find(id);
+    bool firstCall = it == m_canvasChildPaintRecords.end();
     bool contentChanged = false;
-    if (it != m_canvasChildPaintRecords.end()) {
+    if (!firstCall) {
         contentChanged = canvasChildPaintFingerprint(it->value->displayList())
             != canvasChildPaintFingerprint(record->displayList());
     }
 
     m_canvasChildPaintRecords.set(id, WTF::move(record));
 
-    if (contentChanged) {
+    if (contentChanged || firstCall) {
         // TB5b: remember which child changed so dispatchCanvasPaintEvents can build the
         // FrozenArray<Element> payload. WeakPtr drops the child if it's GC'd before
         // dispatch. takeChangedElementsInTreeOrder recovers DOM order at drain time.
