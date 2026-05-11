@@ -56,4 +56,5 @@ typedef (
     [RaisesException, EnabledBySetting=CanvasDrawElementEnabled] DOMMatrix getElementTransform(Element element, DOMMatrix drawTransform);
 
     [EnabledBySetting=CanvasDrawElementEnabled] attribute EventHandler onpaint;
+    [EnabledBySetting=CanvasDrawElementEnabled] undefined requestPaint();
 };

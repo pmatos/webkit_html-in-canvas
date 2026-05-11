@@ -45,6 +45,7 @@
 #include "DrawElementImageMath.h"
 #include "ElementInlines.h"
 #include "ElementChildIteratorInlines.h"
+#include "ElementTraversal.h"
 #include "EventNames.h"
 #include "FrameDestructionObserverInlines.h"
 #include "GPU.h"
@@ -583,7 +584,7 @@ CanvasChildPaintRecord* HTMLCanvasElement::canvasChildPaintRecord(NodeIdentifier
     return it == m_canvasChildPaintRecords.end() ? nullptr : it->value.get();
 }
 
-void HTMLCanvasElement::setCanvasChildPaintRecord(NodeIdentifier id, std::unique_ptr<CanvasChildPaintRecord> record)
+void HTMLCanvasElement::setCanvasChildPaintRecord(Element& child, NodeIdentifier id, std::unique_ptr<CanvasChildPaintRecord> record)
 {
     // TB5a: schedule a paint event only when the new snapshot's content differs from
     // the existing one for this child. WebKit re-records the layoutsubtree child every
@@ -595,11 +596,6 @@ void HTMLCanvasElement::setCanvasChildPaintRecord(NodeIdentifier id, std::unique
     //
     // Comparison uses asText({}) as a content fingerprint — defaultflags exclude
     // platform-specific SetState payload that varies between byte-identical recordings.
-    // This intentionally produces false negatives when style changes that don't reach
-    // the displaylist (e.g. when TB1b's invalidation does not propagate child CSS
-    // changes to the canvas's paint walk). TB5b will replace this with the
-    // changedElements-driven invalidation tracker that captures style invalidation
-    // directly rather than inferring from snapshot content.
     auto it = m_canvasChildPaintRecords.find(id);
     bool contentChanged = false;
     if (it != m_canvasChildPaintRecords.end() && record && it->value)
@@ -608,6 +604,10 @@ void HTMLCanvasElement::setCanvasChildPaintRecord(NodeIdentifier id, std::unique
     m_canvasChildPaintRecords.set(id, WTF::move(record));
 
     if (contentChanged) {
+        // TB5b: remember which child changed so dispatchCanvasPaintEvents can build the
+        // FrozenArray<Element> payload. WeakPtr drops the child if it's GC'd before
+        // dispatch. takeChangedElementsInTreeOrder recovers DOM order at drain time.
+        m_changedCanvasChildren.set(id, child);
         if (RefPtr page = document().page())
             page->scheduleCanvasPaintEvent(*this);
     }
@@ -621,6 +621,42 @@ void HTMLCanvasElement::clearCanvasChildPaintRecord(NodeIdentifier id)
 void HTMLCanvasElement::clearAllCanvasChildPaintRecords()
 {
     m_canvasChildPaintRecords.clear();
+}
+
+void HTMLCanvasElement::requestPaint()
+{
+    // TB5b: force a `paint` event on the next rendering update, regardless of whether
+    // any layoutsubtree child's snapshot changed. Re-entrant calls from inside an
+    // onpaint handler defer to the next tick via Page::dispatchCanvasPaintEvents's
+    // std::exchange swap-and-iterate (the handler's add lands in a fresh page-level
+    // set after the current iteration started on a swapped-out local).
+    RefPtr page = document().page();
+    if (!page)
+        return;
+    m_forcedPaintEvent = true;
+    page->scheduleCanvasPaintEvent(*this);
+}
+
+bool HTMLCanvasElement::consumeForcedPaintFlag()
+{
+    return std::exchange(m_forcedPaintEvent, false);
+}
+
+Vector<Ref<Element>> HTMLCanvasElement::takeChangedElementsInTreeOrder()
+{
+    auto changed = std::exchange(m_changedCanvasChildren, { });
+    if (changed.isEmpty())
+        return { };
+    Vector<Ref<Element>> result;
+    result.reserveInitialCapacity(changed.size());
+    for (RefPtr child = ElementTraversal::firstChild(*this); child; child = ElementTraversal::nextSibling(*child)) {
+        auto it = changed.find(child->nodeIdentifier());
+        if (it == changed.end())
+            continue;
+        if (RefPtr alive = it->value.get())
+            result.append(alive.releaseNonNull());
+    }
+    return result;
 }
 
 ExceptionOr<CanvasChildPaintRecord*> HTMLCanvasElement::validateChildForDrawElementImage(Element& element)

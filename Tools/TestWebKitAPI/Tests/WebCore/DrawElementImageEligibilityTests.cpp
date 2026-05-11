@@ -148,7 +148,7 @@ TEST(DrawElementImageEligibility, EligibleSuccess)
     auto displayList = DisplayList::DisplayList::create({ });
     auto record = makeUnique<CanvasChildPaintRecord>(WTF::move(displayList), CanvasChildPaintState { });
     auto* recordPtr = record.get();
-    canvas->setCanvasChildPaintRecord(child->nodeIdentifier(), WTF::move(record));
+    canvas->setCanvasChildPaintRecord(child.get(), child->nodeIdentifier(), WTF::move(record));
 
     auto result = verifyDrawElementImageEligibility(canvas.get(), child.get());
     ASSERT_FALSE(result.hasException());

@@ -82,7 +82,7 @@ TEST(CanvasChildSnapshotStore, RecordSetGetClear)
     EXPECT_EQ(canvas->canvasChildPaintRecord(id), nullptr) << "no record before set";
     EXPECT_EQ(canvas->canvasChildPaintRecordCount(), 0u);
 
-    canvas->setCanvasChildPaintRecord(id, makeEmptyRecord());
+    canvas->setCanvasChildPaintRecord(div.get(), id, makeEmptyRecord());
     EXPECT_NE(canvas->canvasChildPaintRecord(id), nullptr) << "record present after set";
     EXPECT_EQ(canvas->canvasChildPaintRecordCount(), 1u);
 
@@ -106,8 +106,8 @@ TEST(CanvasChildSnapshotStore, BackingStoreResizeKeepsRecords)
     canvas->appendChild(div1);
     canvas->appendChild(div2);
 
-    canvas->setCanvasChildPaintRecord(div1->nodeIdentifier(), makeEmptyRecord());
-    canvas->setCanvasChildPaintRecord(div2->nodeIdentifier(), makeEmptyRecord());
+    canvas->setCanvasChildPaintRecord(div1.get(), div1->nodeIdentifier(), makeEmptyRecord());
+    canvas->setCanvasChildPaintRecord(div2.get(), div2->nodeIdentifier(), makeEmptyRecord());
     EXPECT_EQ(canvas->canvasChildPaintRecordCount(), 2u);
 
     auto result = canvas->setWidth(200);
@@ -130,8 +130,8 @@ TEST(CanvasChildSnapshotStore, ChildrenChangedRemovesStaleEntries)
 
     auto id1 = div1->nodeIdentifier();
     auto id2 = div2->nodeIdentifier();
-    canvas->setCanvasChildPaintRecord(id1, makeEmptyRecord());
-    canvas->setCanvasChildPaintRecord(id2, makeEmptyRecord());
+    canvas->setCanvasChildPaintRecord(div1.get(), id1, makeEmptyRecord());
+    canvas->setCanvasChildPaintRecord(div2.get(), id2, makeEmptyRecord());
     EXPECT_EQ(canvas->canvasChildPaintRecordCount(), 2u);
 
     // Move div1 out of the canvas (still in the document, but no longer the canvas's child).
@@ -154,7 +154,7 @@ TEST(CanvasChildSnapshotStore, NodeIdentifierMonotonic)
     auto childA = HTMLDivElement::create(document);
     canvas->appendChild(childA);
     auto idA = childA->nodeIdentifier();
-    canvas->setCanvasChildPaintRecord(idA, makeEmptyRecord());
+    canvas->setCanvasChildPaintRecord(childA.get(), idA, makeEmptyRecord());
     canvas->removeChild(childA);
     EXPECT_EQ(canvas->canvasChildPaintRecord(idA), nullptr) << "purged on removal";
 

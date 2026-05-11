@@ -87,9 +87,17 @@ public:
     // recording walk in RenderLayer::paintList; consumed by drawElementImage.
     size_t canvasChildPaintRecordCount() const { return m_canvasChildPaintRecords.size(); }
     CanvasChildPaintRecord* canvasChildPaintRecord(NodeIdentifier);
-    void setCanvasChildPaintRecord(NodeIdentifier, std::unique_ptr<CanvasChildPaintRecord>);
+    void setCanvasChildPaintRecord(Element&, NodeIdentifier, std::unique_ptr<CanvasChildPaintRecord>);
     void clearCanvasChildPaintRecord(NodeIdentifier);
     void clearAllCanvasChildPaintRecords();
+
+    // <canvas layoutsubtree> paint event (TB5b). requestPaint() forces a `paint`
+    // event on the next rendering update; takeChangedElementsInTreeOrder()
+    // drains the set populated by setCanvasChildPaintRecord and returns the
+    // elements in DOM tree order.
+    void requestPaint();
+    Vector<Ref<Element>> takeChangedElementsInTreeOrder();
+    bool consumeForcedPaintFlag();
 
     // Shared eligibility check for drawElementImage / getElementTransform / captureElementImage.
     // Thin shim over verifyDrawElementImageEligibility (TB4 / issue #9).
@@ -213,6 +221,14 @@ private:
     mutable RefPtr<Image> m_copiedImage; // FIXME: This is temporary for platforms that have to copy the image buffer to render (and for CSSCanvasValue).
 
     HashMap<NodeIdentifier, std::unique_ptr<CanvasChildPaintRecord>> m_canvasChildPaintRecords;
+
+    // TB5b: per-canvas changed-child set built up since the last paint event.
+    // Keyed by NodeIdentifier (matches m_canvasChildPaintRecords); the
+    // WeakPtr<Element> drops out automatically if the child is GC'd before
+    // dispatch. DOM tree order is recovered by walking direct children at
+    // dispatch time, not by storing in insertion/hash order.
+    HashMap<NodeIdentifier, WeakPtr<Element, WeakPtrImplWithEventTargetData>> m_changedCanvasChildren;
+    bool m_forcedPaintEvent { false };
 };
 
 WebCoreOpaqueRoot root(HTMLCanvasElement*);

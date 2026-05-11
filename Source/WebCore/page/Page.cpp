@@ -115,6 +115,7 @@
 #include "InspectorBackendClient.h"
 #include "InspectorInstrumentation.h"
 #include "IntelligenceTextEffectsSupport.h"
+#include "InvalidationDisallowedScope.h"
 #include "KeyboardScrollingAnimator.h"
 #include "LayoutDisallowedScope.h"
 #include "LegacySchemeRegistry.h"
@@ -2120,14 +2121,27 @@ void Page::scheduleCanvasPaintEvent(HTMLCanvasElement& canvas)
 
 void Page::dispatchCanvasPaintEvents()
 {
-    // Swap-and-iterate so that any canvas re-enqueued during a handler (e.g. via
-    // a future requestPaint() in TB5b) defers to the next rendering update tick,
-    // mirroring Chrome's local_frame_view.cc:1065-1067 swap-out idiom.
+    // Swap-and-iterate so that a canvas re-enqueued during a handler (e.g. via
+    // requestPaint() called from inside onpaint) defers to the next rendering
+    // update tick, mirroring Chrome's local_frame_view.cc:1065-1067 swap-out.
     auto pending = std::exchange(m_canvasesNeedingPaintEvent, { });
     for (Ref canvas : pending) {
+        // Drain force flag + changed-children set even on disconnected canvases
+        // so re-attaching cannot carry stale state into another tick.
+        bool forced = canvas->consumeForcedPaintFlag();
+        Vector<Ref<Element>> changedElements = canvas->takeChangedElementsInTreeOrder();
         if (!canvas->isConnected())
             continue;
-        Ref event = CanvasPaintEvent::create(eventNames().paintEvent);
+        // requestPaint() forces a fire with an empty changedElements payload;
+        // non-forced fires must have at least one changed child.
+        if (!forced && changedElements.isEmpty())
+            continue;
+        // TB5b: forbid style invalidation in the onpaint handler. DEBUG-only:
+        // catches handlers that force style recalc via e.g. getComputedStyle
+        // or by reading layout-dependent properties; production behaviour is
+        // unaffected.
+        InvalidationDisallowedScope invalidationGuard;
+        Ref event = CanvasPaintEvent::create(eventNames().paintEvent, WTF::move(changedElements));
         canvas->dispatchEvent(event);
     }
 }
@@ -2371,15 +2385,11 @@ void Page::updateRendering()
         document.updateIntersectionObservers();
     });
 
-    // TB5a: dispatch <canvas layoutsubtree> paint events between intersection
-    // observers and the next paint commit. The pending set is page-global, so we
-    // emit a single dispatch per tick (not via runProcessingStep, which iterates
-    // per renderable Document). Manual remove matches the WheelEventMonitorCallbacks
-    // pattern below.
-    if (m_renderingUpdateRemainingSteps.last().contains(RenderingUpdateStep::CanvasPaintEvents)) {
-        dispatchCanvasPaintEvents();
-        m_renderingUpdateRemainingSteps.last().remove(RenderingUpdateStep::CanvasPaintEvents);
-    }
+    // TB5b: <canvas layoutsubtree> paint events are dispatched in
+    // finalizeRenderingUpdate (not here), AFTER flushCompositingStateIncludingSubframes
+    // runs the paint walk and setCanvasChildPaintRecord populates the pending
+    // set. Dispatching at this earlier slot would be one frame behind the
+    // snapshot-diff that scheduled it.
 
     runProcessingStep(RenderingUpdateStep::Images, [] (Document& document) {
         for (auto& image : protect(document.cachedResourceLoader())->allCachedSVGImages()) {
@@ -2548,6 +2558,16 @@ void Page::finalizeRenderingUpdate(OptionSet<FinalizeRenderingUpdateFlags> flags
 {
     for (auto& rootFrame : m_rootFrames)
         finalizeRenderingUpdateForRootFrame(Ref { rootFrame.get() }, flags);
+
+    // TB5b: dispatch <canvas layoutsubtree> paint events post-paint, pre-commit.
+    // The paint walks in finalizeRenderingUpdateForRootFrame have populated the
+    // pending set via setCanvasChildPaintRecord; drain it here so onpaint fires
+    // *this* tick instead of next tick. The set is page-global so dispatching
+    // once per tick (outside the per-root-frame loop above) is correct.
+    if (m_renderingUpdateRemainingSteps.last().contains(RenderingUpdateStep::CanvasPaintEvents)) {
+        dispatchCanvasPaintEvents();
+        m_renderingUpdateRemainingSteps.last().remove(RenderingUpdateStep::CanvasPaintEvents);
+    }
 
     ASSERT(m_renderingUpdateRemainingSteps.last().isEmpty());
     renderingUpdateCompleted();

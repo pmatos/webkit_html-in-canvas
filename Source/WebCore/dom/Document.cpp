@@ -181,6 +181,7 @@
 #include "KeyframeEffect.h"
 #include "LargestContentfulPaint.h"
 #include "LargestContentfulPaintData.h"
+#include "InvalidationDisallowedScope.h"
 #include "LayoutDisallowedScope.h"
 #include "LazyLoadImageObserver.h"
 #include "LegacySchemeRegistry.h"
@@ -2948,6 +2949,15 @@ bool Document::needsStyleRecalc() const
 bool Document::updateStyleIfNeeded()
 {
     ScriptDisallowedScope::InMainThread scriptDisallowedScope;
+    // TB5b: InvalidationDisallowedScope is wired up around paint event dispatch
+    // in Page::dispatchCanvasPaintEvents. The assertion is intentionally NOT
+    // placed here because elementsFromPoint() and other hit-testing entries
+    // call updateStyleIfNeeded as part of normal layout flushing — Chromium's
+    // onpaint-outside-invalidation-crash.html relies on that being allowed
+    // (Chrome itself doesn't ASSERT on forced layout from an onpaint handler;
+    // it only catches *scheduled* style invalidation that would dirty the
+    // current frame's commit, which has no single entrypoint in WebKit).
+    // Left as scaffolding for a future tighter assertion site.
 
     if (isInStyleInterleavedLayoutForSelfOrAncestor())
         return false;

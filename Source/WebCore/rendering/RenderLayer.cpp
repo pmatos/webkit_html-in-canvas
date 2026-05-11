@@ -4090,6 +4090,7 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
                 transformOrigin,
             };
             canvasElement.setCanvasChildPaintRecord(
+                *element,
                 element->nodeIdentifier(),
                 makeUnique<CanvasChildPaintRecord>(WTF::move(displayList), state));
             // TB5a: setCanvasChildPaintRecord internally schedules the canvas for a
