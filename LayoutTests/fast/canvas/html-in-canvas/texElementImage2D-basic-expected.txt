@@ -1,0 +1,3 @@
+
+PASS texElementImage2D(target, level, internalformat, format, type, source) uploads element pixels at natural size
+

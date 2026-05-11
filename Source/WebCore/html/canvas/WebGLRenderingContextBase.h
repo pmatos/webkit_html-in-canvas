@@ -28,9 +28,11 @@
 #if ENABLE(WEBGL)
 
 #include "EventLoop.h"
+#include "FloatRect.h"
 #include "GPUBasedCanvasRenderingContext.h"
 #include "GraphicsContextGL.h"
 #include "ImageBuffer.h"
+#include "IntSize.h"
 #include "PredefinedColorSpace.h"
 #include "Timer.h"
 #include "WebGLAny.h"
@@ -96,6 +98,8 @@ class EXTTextureCompressionRGTC;
 class EXTTextureFilterAnisotropic;
 class EXTTextureMirrorClampToEdge;
 class EXTTextureNorm16;
+class Element;
+class FloatRect;
 class HTMLImageElement;
 class ImageData;
 class IntSize;
@@ -336,6 +340,16 @@ public:
     // These must be virtual so more validation can be added in WebGL 2.0.
     virtual void texSubImage2D(GCGLenum target, GCGLint level, GCGLint xoffset, GCGLint yoffset, GCGLsizei width, GCGLsizei height, GCGLenum format, GCGLenum type, RefPtr<ArrayBufferView>&&);
     virtual ExceptionOr<void> texSubImage2D(GCGLenum target, GCGLint level, GCGLint xoffset, GCGLint yoffset, GCGLenum format, GCGLenum type, std::optional<TexImageSource>&&);
+
+    // https://github.com/whatwg/html/pull/11588 — html-in-canvas TB8 (issue #11).
+    ExceptionOr<void> texElementImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, GCGLenum format, GCGLenum type, Element&);
+    ExceptionOr<void> texElementImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, GCGLsizei width, GCGLsizei height, GCGLenum format, GCGLenum type, Element&);
+    ExceptionOr<void> texElementImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, float sx, float sy, float swidth, float sheight, GCGLenum format, GCGLenum type, Element&);
+    ExceptionOr<void> texElementImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, float sx, float sy, float swidth, float sheight, GCGLsizei width, GCGLsizei height, GCGLenum format, GCGLenum type, Element&);
+
+private:
+    ExceptionOr<void> texElementImageImpl(GCGLenum target, GCGLint level, GCGLenum internalformat, std::optional<FloatRect> sourceRect, std::optional<IntSize> explicitDestSize, GCGLenum format, GCGLenum type, Element&);
+public:
 
     template<typename TypedArray, typename DataType>
     class TypedList {

@@ -1,0 +1,59 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>WebGL texElementImage2D — 8-arg destination scale (TB8)</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<style>
+  body { margin: 0; }
+  #cvs { display: block; }
+  /* 32×32 element split horizontally: left half red, right half green. */
+  #child {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(to right, rgb(255, 0, 0) 0 50%, rgb(0, 255, 0) 50% 100%);
+  }
+</style>
+<body>
+<canvas id="cvs" width="32" height="32" layoutsubtree>
+    <div id="child"></div>
+</canvas>
+<script>
+function nextPaint() {
+    return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+
+promise_test(async () => {
+    await nextPaint();
+    const canvas = document.getElementById("cvs");
+    const child = document.getElementById("child");
+    const gl = canvas.getContext("webgl");
+    assert_not_equals(gl, null);
+
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    // 8-arg overload: explicit destination dims (16×16) downscale the 32×32 element.
+    gl.texElementImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 16, 16, gl.RGBA, gl.UNSIGNED_BYTE, child);
+
+    const fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    assert_equals(gl.checkFramebufferStatus(gl.FRAMEBUFFER), gl.FRAMEBUFFER_COMPLETE);
+
+    const pixels = new Uint8Array(16 * 16 * 4);
+    gl.readPixels(0, 0, 16, 16, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+    // Left-half centre pixel: column 4 (well inside the red half), row 8.
+    const left = (8 * 16 + 4) * 4;
+    assert_equals(pixels[left], 255, "left-half red");
+    assert_equals(pixels[left + 1], 0, "left-half green");
+    assert_equals(pixels[left + 2], 0, "left-half blue");
+    assert_equals(pixels[left + 3], 255, "left-half alpha");
+
+    // Right-half centre pixel: column 12.
+    const right = (8 * 16 + 12) * 4;
+    assert_equals(pixels[right], 0, "right-half red");
+    assert_equals(pixels[right + 1], 255, "right-half green");
+    assert_equals(pixels[right + 2], 0, "right-half blue");
+    assert_equals(pixels[right + 3], 255, "right-half alpha");
+}, "8-arg texElementImage2D scales the element snapshot to the requested destination dimensions");
+</script>
+</body>

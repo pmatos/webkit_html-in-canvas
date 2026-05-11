@@ -1,0 +1,3 @@
+
+PASS 10-arg texElementImage2D crops the source rect from the element snapshot
+

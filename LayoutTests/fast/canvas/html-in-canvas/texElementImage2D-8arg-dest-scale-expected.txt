@@ -1,0 +1,3 @@
+
+PASS 8-arg texElementImage2D scales the element snapshot to the requested destination dimensions
+

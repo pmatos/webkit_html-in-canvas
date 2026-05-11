@@ -514,6 +514,13 @@ typedef (HTMLCanvasElement) WebGLCanvas;
     undefined texSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, [AllowShared] ArrayBufferView? pixels);
     undefined texSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLenum format, GLenum type, TexImageSource source);
 
+    // https://github.com/whatwg/html/pull/11588 — html-in-canvas TB8 (issue #11).
+    // (Element or ElementImage) union lands in TB6.
+    [EnabledBySetting=CanvasDrawElementEnabled, RaisesException] undefined texElementImage2D(GLenum target, GLint level, GLenum internalformat, GLenum format, GLenum type, Element element);
+    [EnabledBySetting=CanvasDrawElementEnabled, RaisesException] undefined texElementImage2D(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLenum format, GLenum type, Element element);
+    [EnabledBySetting=CanvasDrawElementEnabled, RaisesException] undefined texElementImage2D(GLenum target, GLint level, GLenum internalformat, float sx, float sy, float swidth, float sheight, GLenum format, GLenum type, Element element);
+    [EnabledBySetting=CanvasDrawElementEnabled, RaisesException] undefined texElementImage2D(GLenum target, GLint level, GLenum internalformat, float sx, float sy, float swidth, float sheight, GLsizei width, GLsizei height, GLenum format, GLenum type, Element element);
+
     undefined compressedTexImage2D(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLint border, [AllowShared] ArrayBufferView data);
     undefined compressedTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, [AllowShared] ArrayBufferView data);
 

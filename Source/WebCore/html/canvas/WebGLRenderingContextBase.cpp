@@ -31,6 +31,7 @@
 #include "ANGLEInstancedArrays.h"
 #include "BitmapImage.h"
 #include "CachedImage.h"
+#include "CanvasChildPaintRecord.h"
 #include "Chrome.h"
 #include "ContextDestructionObserverInlines.h"
 #include "ContainerNodeInlines.h"
@@ -56,6 +57,7 @@
 #include "EXTTextureMirrorClampToEdge.h"
 #include "EXTTextureNorm16.h"
 #include "EXTsRGB.h"
+#include "Element.h"
 #include "EventLoop.h"
 #include "EventNames.h"
 #include "FrameLoader.h"
@@ -98,6 +100,7 @@
 #include "RenderBox.h"
 #include "Settings.h"
 #include "ScriptExecutionContextInlines.h"
+#include "TextureUploadFromSnapshot.h"
 #include "WebCodecsVideoFrame.h"
 #include "WebCoreOpaqueRootInlines.h"
 #include "WebGL2RenderingContext.h"
@@ -4159,6 +4162,62 @@ ExceptionOr<void> WebGLRenderingContextBase::texImage2D(GCGLenum target, GCGLint
     }
 
     return texImageSourceHelper(TexImageFunctionID::TexImage2D, target, level, internalformat, 0, format, type, 0, 0, 0, sentinelEmptyRect(), 1, 0, WTF::move(*source));
+}
+
+// https://github.com/whatwg/html/pull/11588 — html-in-canvas TB8 (issue #11).
+ExceptionOr<void> WebGLRenderingContextBase::texElementImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, GCGLenum format, GCGLenum type, Element& element)
+{
+    return texElementImageImpl(target, level, internalformat, std::nullopt, std::nullopt, format, type, element);
+}
+
+ExceptionOr<void> WebGLRenderingContextBase::texElementImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, GCGLsizei width, GCGLsizei height, GCGLenum format, GCGLenum type, Element& element)
+{
+    return texElementImageImpl(target, level, internalformat, std::nullopt, IntSize { width, height }, format, type, element);
+}
+
+ExceptionOr<void> WebGLRenderingContextBase::texElementImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, float sx, float sy, float swidth, float sheight, GCGLenum format, GCGLenum type, Element& element)
+{
+    return texElementImageImpl(target, level, internalformat, FloatRect { sx, sy, swidth, sheight }, std::nullopt, format, type, element);
+}
+
+ExceptionOr<void> WebGLRenderingContextBase::texElementImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, float sx, float sy, float swidth, float sheight, GCGLsizei width, GCGLsizei height, GCGLenum format, GCGLenum type, Element& element)
+{
+    return texElementImageImpl(target, level, internalformat, FloatRect { sx, sy, swidth, sheight }, IntSize { width, height }, format, type, element);
+}
+
+ExceptionOr<void> WebGLRenderingContextBase::texElementImageImpl(GCGLenum target, GCGLint level, GCGLenum internalformat, std::optional<FloatRect> sourceRect, std::optional<IntSize> explicitDestSize, GCGLenum format, GCGLenum type, Element& element)
+{
+    if (isContextLost())
+        return { };
+
+    RefPtr canvas = htmlCanvas();
+    if (!canvas)
+        return Exception { ExceptionCode::InvalidStateError, "texElementImage2D requires an HTMLCanvasElement-bound WebGL context."_s };
+
+    auto eligibility = canvas->validateChildForDrawElementImage(element);
+    if (eligibility.hasException())
+        return eligibility.releaseException();
+    auto* record = eligibility.releaseReturnValue();
+
+    auto boxSize = record->state().boxSize;
+    FloatRect effectiveSourceRect = sourceRect.value_or(FloatRect { FloatPoint { }, boxSize });
+    IntSize destSize = explicitDestSize.value_or(expandedIntSize(effectiveSourceRect.size()));
+
+    if (effectiveSourceRect.isEmpty() || destSize.isEmpty())
+        return { };
+
+    auto texture = validateTexImageBinding(TexImageFunctionID::TexImage2D, target);
+    if (!texture)
+        return { };
+    if (!validateTexFunc(TexImageFunctionID::TexImage2D, SourceHTMLCanvasElement, target, level, internalformat, destSize.width(), destSize.height(), 1, 0, format, type, 0, 0, 0))
+        return { };
+
+    RefPtr<Image> image = rasterizeCanvasChildPaintRecord(*record, effectiveSourceRect, destSize);
+    if (!image)
+        return { };
+
+    texImageImpl(TexImageFunctionID::TexImage2D, target, level, internalformat, 0, 0, 0, format, type, *image, GraphicsContextGL::DOMSource::Canvas, m_unpackFlipY, m_unpackPremultiplyAlpha, /*ignoreNativeImageAlphaPremultiplication*/ false, sentinelEmptyRect(), /*depth*/ 1, /*unpackImageHeight*/ 0);
+    return { };
 }
 
 RefPtr<Image> WebGLRenderingContextBase::drawImageIntoBuffer(Image& image, int width, int height, int deviceScaleFactor, ASCIILiteral functionName)

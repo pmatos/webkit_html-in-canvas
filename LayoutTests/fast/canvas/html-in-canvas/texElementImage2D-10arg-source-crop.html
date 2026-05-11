@@ -1,0 +1,58 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>WebGL texElementImage2D — 10-arg source-rect crop (TB8)</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<style>
+  body { margin: 0; }
+  #cvs { display: block; }
+  /* 32×32 element split horizontally: left half red, right half green. */
+  #child {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(to right, rgb(255, 0, 0) 0 50%, rgb(0, 255, 0) 50% 100%);
+  }
+</style>
+<body>
+<canvas id="cvs" width="32" height="32" layoutsubtree>
+    <div id="child"></div>
+</canvas>
+<script>
+function nextPaint() {
+    return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+
+promise_test(async () => {
+    await nextPaint();
+    const canvas = document.getElementById("cvs");
+    const child = document.getElementById("child");
+    const gl = canvas.getContext("webgl");
+    assert_not_equals(gl, null);
+
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    // 10-arg overload: crop the right half (green), destSize defaults to source dims.
+    gl.texElementImage2D(gl.TEXTURE_2D, 0, gl.RGBA,
+        /*sx*/ 16, /*sy*/ 0, /*swidth*/ 16, /*sheight*/ 16,
+        gl.RGBA, gl.UNSIGNED_BYTE, child);
+
+    const fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    assert_equals(gl.checkFramebufferStatus(gl.FRAMEBUFFER), gl.FRAMEBUFFER_COMPLETE);
+
+    const pixels = new Uint8Array(16 * 16 * 4);
+    gl.readPixels(0, 0, 16, 16, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+    // Whole texture should be green (we cropped the right half of the element).
+    // Sample two interior points to skip any 1-px gradient seam.
+    const a = (4 * 16 + 4) * 4;  // top-left interior
+    const b = (12 * 16 + 12) * 4; // bottom-right interior
+    for (const [label, i] of [["a", a], ["b", b]]) {
+        assert_equals(pixels[i], 0, `${label}: red`);
+        assert_equals(pixels[i + 1], 255, `${label}: green`);
+        assert_equals(pixels[i + 2], 0, `${label}: blue`);
+        assert_equals(pixels[i + 3], 255, `${label}: alpha`);
+    }
+}, "10-arg texElementImage2D crops the source rect from the element snapshot");
+</script>
+</body>

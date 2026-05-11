@@ -1,0 +1,5 @@
+
+PASS IDL: texElementImage2D method is exposed under the runtime preference (WebGL1)
+PASS throws TypeError when the element is not a direct child of the canvas (rule 2)
+PASS throws InvalidStateError when the canvas has no layoutsubtree attribute (rule 3)
+

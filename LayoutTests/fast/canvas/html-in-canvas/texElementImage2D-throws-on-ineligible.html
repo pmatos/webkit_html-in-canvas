@@ -1,0 +1,48 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>WebGL texElementImage2D synchronous error paths (TB8)</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<body>
+<!--
+  One canvas, one WebGL context. The debug build hits an ANGLE assertion when more
+  than one WebGL context is created on the same page (renderergl_utils.cpp:515 in
+  GenerateTextureFormatCaps), so we cover the eligibility-error matrix by varying
+  the element argument against a single context.
+
+  This canvas deliberately has NO layoutsubtree attribute so that:
+    - passing a grandchild triggers rule 2 → TypeError (parent check fires first),
+    - passing a direct child triggers rule 3 → InvalidStateError.
+  Rule 1 (nested layoutsubtree canvas) and rule 4 (missing snapshot) are exercised
+  by separate cycles; see issue #11.
+-->
+<canvas id="cvs" width="32" height="32">
+    <div id="direct-child">
+        <span id="grandchild"></span>
+    </div>
+</canvas>
+<script>
+function el(id) { return document.getElementById(id); }
+
+const ctx = el("cvs").getContext("webgl");
+
+test(() => {
+    assert_not_equals(ctx, null, "WebGL context obtained");
+    assert_true("texElementImage2D" in ctx,
+        "texElementImage2D is exposed on WebGLRenderingContext when CanvasDrawElementEnabled is true");
+}, "IDL: texElementImage2D method is exposed under the runtime preference (WebGL1)");
+
+test(() => {
+    assert_throws_js(TypeError, () => {
+        ctx.texElementImage2D(ctx.TEXTURE_2D, 0, ctx.RGBA, ctx.RGBA, ctx.UNSIGNED_BYTE,
+            el("grandchild"));
+    });
+}, "throws TypeError when the element is not a direct child of the canvas (rule 2)");
+
+test(() => {
+    assert_throws_dom("InvalidStateError", () => {
+        ctx.texElementImage2D(ctx.TEXTURE_2D, 0, ctx.RGBA, ctx.RGBA, ctx.UNSIGNED_BYTE,
+            el("direct-child"));
+    });
+}, "throws InvalidStateError when the canvas has no layoutsubtree attribute (rule 3)");
+</script>
+</body>
