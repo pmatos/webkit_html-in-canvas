@@ -1,4 +1,4 @@
 
 
-FAIL Tests that error conditions cause exceptions promise_test: Unhandled rejection with value: object "TypeError: canvas.requestPaint is not a function. (In 'canvas.requestPaint()', 'canvas.requestPaint' is undefined)"
+FAIL Tests that error conditions cause exceptions assert_throws_dom: Can't capture element image if layoutsubtree is not specified. function "() => canvas.captureElementImage(child)" threw object "TypeError: canvas.captureElementImage is not a function. (In 'canvas.captureElementImage(child)', 'canvas.captureElementImage' is undefined)" that is not a DOMException InvalidStateError: property "code" is equal to undefined, expected 11
 

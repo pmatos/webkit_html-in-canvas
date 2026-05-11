@@ -1,13 +1,13 @@
 
 PASS onpaint should not fire without changes
-FAIL onpaint should fire once if a canvas child changes assert_equals: onpaint should fire after a child changes. expected 1 but got 0
-FAIL onpaint should fire if a canvas child is added or removed assert_equals: onpaint should fire after a child is added. expected 2 but got 1
-FAIL onpaint should fire once if a canvas grandchild changes assert_equals: onpaint should fire after a repaint. expected 1 but got 0
-FAIL onpaint should not fire if the canvas itself changes assert_equals: expected 0 but got 1
-PASS onpaint should not fire if a canvas sibling changes
-FAIL onpaint should not fire if a canvas ancestor changes assert_equals: expected 0 but got 1
-FAIL onpaint should not fire after canvas child transform changes assert_equals: onpaint should fire after a repaint. expected 1 but got 0
+FAIL onpaint should fire once if a canvas child changes assert_equals: onpaint should not fire without additional changes. expected 1 but got 2
+FAIL onpaint should fire if a canvas child is added or removed assert_equals: onpaint should fire after a child is removed. expected 1 but got 0
+FAIL onpaint should fire once if a canvas grandchild changes assert_equals: onpaint should not fire without additional changes. expected 1 but got 2
+PASS onpaint should not fire if the canvas itself changes
+FAIL onpaint should not fire if a canvas sibling changes assert_equals: expected 0 but got 1
+PASS onpaint should not fire if a canvas ancestor changes
+PASS onpaint should not fire after canvas child transform changes
 FAIL onpaint should not fire after canvas drawing operations assert_equals: drawing operations should not cause onpaint to fire. expected 1 but got 2
 FAIL onpaint should respect layoutsubtree attribute mutation assert_equals: onpaint should fire when layoutsubtree is present. expected 1 but got 0
-FAIL onpaint should work with addEventListener assert_equals: addEventListener should receive the paint event. expected 1 but got 0
+PASS onpaint should work with addEventListener
 

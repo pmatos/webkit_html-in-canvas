@@ -1,3 +1,4 @@
 
-FAIL drawElementImage should ignore sandboxed same-origin iframes promise_test: Unhandled rejection with value: object "TypeError: canvas.requestPaint is not a function. (In 'canvas.requestPaint()', 'canvas.requestPaint' is undefined)"
+
+FAIL drawElementImage should ignore sandboxed same-origin iframes assert_array_equals: Same origin should draw expected property 1 to be 0 but got 128 (expected array [0, 0, 255, 255] got object "0,128,0,255")
 

@@ -1,13 +1,15 @@
 
-FAIL Element transform for identity draw transform should be an identity matrix promise_test: Unhandled rejection with value: object "TypeError: canvas.requestPaint is not a function. (In 'canvas.requestPaint()', 'canvas.requestPaint' is undefined)"
-FAIL Element transform should account for translation in the input transform promise_test: Unhandled rejection with value: object "TypeError: canvas.requestPaint is not a function. (In 'canvas.requestPaint()', 'canvas.requestPaint' is undefined)"
-FAIL Element transform should account for scale in the input transform promise_test: Unhandled rejection with value: object "TypeError: canvas.requestPaint is not a function. (In 'canvas.requestPaint()', 'canvas.requestPaint' is undefined)"
-FAIL Element transform should not include transform on the element promise_test: Unhandled rejection with value: object "TypeError: canvas.requestPaint is not a function. (In 'canvas.requestPaint()', 'canvas.requestPaint' is undefined)"
-FAIL Element transform should not automatically include the current transform matrix, but should pass it through promise_test: Unhandled rejection with value: object "TypeError: canvas.requestPaint is not a function. (In 'canvas.requestPaint()', 'canvas.requestPaint' is undefined)"
-FAIL Element transform should not be affected by zoom on the canvas promise_test: Unhandled rejection with value: object "TypeError: canvas.requestPaint is not a function. (In 'canvas.requestPaint()', 'canvas.requestPaint' is undefined)"
-FAIL Element transform should account for transform-origin promise_test: Unhandled rejection with value: object "TypeError: canvas.requestPaint is not a function. (In 'canvas.requestPaint()', 'canvas.requestPaint' is undefined)"
-FAIL Element transform should account for canvas grid pixel scale promise_test: Unhandled rejection with value: object "TypeError: canvas.requestPaint is not a function. (In 'canvas.requestPaint()', 'canvas.requestPaint' is undefined)"
-FAIL Element transform should account for canvas css pixel scale promise_test: Unhandled rejection with value: object "TypeError: canvas.requestPaint is not a function. (In 'canvas.requestPaint()', 'canvas.requestPaint' is undefined)"
-FAIL Element transform should account for canvas pixel scale, transform-origin, and a complex draw transform promise_test: Unhandled rejection with value: object "TypeError: canvas.requestPaint is not a function. (In 'canvas.requestPaint()', 'canvas.requestPaint' is undefined)"
-FAIL getElementTransform should throw when called prior to paint. promise_test: Unhandled rejection with value: object "TypeError: canvas.requestPaint is not a function. (In 'canvas.requestPaint()', 'canvas.requestPaint' is undefined)"
+Harness Error (TIMEOUT), message = null
+
+PASS Element transform for identity draw transform should be an identity matrix
+PASS Element transform should account for translation in the input transform
+TIMEOUT Element transform should account for scale in the input transform Test timed out
+NOTRUN Element transform should not include transform on the element
+NOTRUN Element transform should not automatically include the current transform matrix, but should pass it through
+NOTRUN Element transform should not be affected by zoom on the canvas
+NOTRUN Element transform should account for transform-origin
+NOTRUN Element transform should account for canvas grid pixel scale
+NOTRUN Element transform should account for canvas css pixel scale
+NOTRUN Element transform should account for canvas pixel scale, transform-origin, and a complex draw transform
+NOTRUN getElementTransform should throw when called prior to paint.
 

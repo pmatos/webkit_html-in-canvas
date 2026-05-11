@@ -1,6 +1,6 @@
 
 
-FAIL requestPaint should cause onpaint to fire without changes promise_test: Unhandled rejection with value: object "TypeError: canvasa.requestPaint is not a function. (In 'canvasa.requestPaint()', 'canvasa.requestPaint' is undefined)"
-FAIL requestPaint should cause onpaint to fire without changes, with two canvases promise_test: Unhandled rejection with value: object "TypeError: canvasa.requestPaint is not a function. (In 'canvasa.requestPaint()', 'canvasa.requestPaint' is undefined)"
-FAIL requestPaint can be called in onpaint promise_test: Unhandled rejection with value: object "TypeError: canvasa.requestPaint is not a function. (In 'canvasa.requestPaint()', 'canvasa.requestPaint' is undefined)"
+PASS requestPaint should cause onpaint to fire without changes
+PASS requestPaint should cause onpaint to fire without changes, with two canvases
+PASS requestPaint can be called in onpaint
 

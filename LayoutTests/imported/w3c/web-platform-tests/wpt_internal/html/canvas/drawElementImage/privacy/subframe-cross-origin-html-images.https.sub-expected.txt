@@ -1,4 +1,4 @@
 
 
-FAIL subframe that draws HTML images promise_test: Unhandled rejection with value: object "TypeError: canvas.requestPaint is not a function. (In 'canvas.requestPaint()', 'canvas.requestPaint' is undefined)"
+FAIL subframe that draws HTML images assert_array_equals: Same origin should draw expected property 1 to be 255 but got 0 (expected array [0, 255, 0, 255] got object "0,0,0,0")
 

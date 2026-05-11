@@ -1,4 +1,4 @@
 
-FAIL OffscreenCanvas.drawElementImage should draw an ElementImage promise_test: Unhandled rejection with value: object "TypeError: canvas.requestPaint is not a function. (In 'canvas.requestPaint()', 'canvas.requestPaint' is undefined)"
-FAIL Passing an Element to OffscreenCanvas methods on the main thread throws InvalidStateError promise_test: Unhandled rejection with value: object "TypeError: canvas.requestPaint is not a function. (In 'canvas.requestPaint()', 'canvas.requestPaint' is undefined)"
+FAIL OffscreenCanvas.drawElementImage should draw an ElementImage promise_test: Unhandled rejection with value: object "TypeError: canvas.captureElementImage is not a function. (In 'canvas.captureElementImage(child)', 'canvas.captureElementImage' is undefined)"
+PASS Passing an Element to OffscreenCanvas methods on the main thread throws InvalidStateError
 

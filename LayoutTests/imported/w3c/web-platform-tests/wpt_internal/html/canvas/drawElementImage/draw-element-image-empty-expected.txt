@@ -1,3 +1,5 @@
 
-FAIL canvas drawElementImage should not throw on empty elements. assert_throws_dom: drawElementImage should throw prior to onpaint. function "() => ctx.drawElementImage(child, 0, 0)" threw object "TypeError: ctx.drawElementImage is not a function. (In 'ctx.drawElementImage(child, 0, 0)', 'ctx.drawElementImage' is undefined)" that is not a DOMException InvalidStateError: property "code" is equal to undefined, expected 11
+Harness Error (TIMEOUT), message = null
+
+TIMEOUT canvas drawElementImage should not throw on empty elements. Test timed out
 

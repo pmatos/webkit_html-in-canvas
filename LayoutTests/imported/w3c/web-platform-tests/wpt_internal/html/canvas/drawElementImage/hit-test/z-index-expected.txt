@@ -1,4 +1,4 @@
 
-FAIL elementFromPoint should hit the last element in dom order. assert_equals: expected Element node <div id="b"></div> but got Element node <canvas id="canvas" width="200" height="200" layoutsubtre...
-FAIL elementFromPoint should hit the highest z-index element. assert_equals: expected Element node <div id="a" style="z-index: 5;"></div> but got Element node <canvas id="canvas" width="200" height="200" layoutsubtre...
+PASS elementFromPoint should hit the last element in dom order.
+FAIL elementFromPoint should hit the highest z-index element. assert_equals: expected Element node <div id="a" style="z-index: 5;"></div> but got Element node <div id="b"></div>
 

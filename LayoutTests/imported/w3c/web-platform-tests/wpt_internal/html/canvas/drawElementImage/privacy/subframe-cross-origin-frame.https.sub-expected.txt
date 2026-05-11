@@ -1,4 +1,4 @@
 
 
-FAIL subframe loaded cross-origin that itself loads iframes promise_test: Unhandled rejection with value: object "TypeError: canvas.requestPaint is not a function. (In 'canvas.requestPaint()', 'canvas.requestPaint' is undefined)"
+FAIL subframe loaded cross-origin that itself loads iframes assert_array_equals: Cross origin should not draw expected property 2 to be 255 but got 0 (expected array [0, 0, 255, 255] got object "0,0,0,0")
 

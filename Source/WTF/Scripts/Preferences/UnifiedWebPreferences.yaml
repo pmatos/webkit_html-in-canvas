@@ -1630,7 +1630,7 @@ CanvasColorTypeEnabled:
 
 CanvasDrawElementEnabled:
   type: bool
-  status: unstable
+  status: testable
   category: dom
   humanReadableName: "Canvas drawElement APIs"
   humanReadableDescription: "Enable HTML-in-canvas: <canvas layoutsubtree>, drawElementImage, captureElementImage, paint event, texElementImage2D, copyElementImageToTexture"

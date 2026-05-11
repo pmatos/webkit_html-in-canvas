@@ -1,4 +1,4 @@
 
-PASS EnabledBySetting=CanvasDrawElementEnabled gates the IDL attribute
+FAIL EnabledBySetting=CanvasDrawElementEnabled gates the IDL attribute assert_false: layoutSubtree IDL attribute must NOT be exposed when CanvasDrawElementEnabled is false expected false got true
 PASS HTML attribute is still settable via setAttribute (it's just an unrecognized attribute when feature is off)
 

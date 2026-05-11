@@ -1,3 +1,3 @@
 
-FAIL drawElementImage with zero size does nothing promise_test: Unhandled rejection with value: object "TypeError: canvas.requestPaint is not a function. (In 'canvas.requestPaint()', 'canvas.requestPaint' is undefined)"
+FAIL drawElementImage with zero size does nothing assert_array_equals: expected property 0 to be 0 but got 255 (expected array [0, 128, 0, 255] got object "255,0,0,255")
 
