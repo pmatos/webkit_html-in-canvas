@@ -57,6 +57,17 @@ typedef (sequence<GPUIntegerCoordinate> or GPUExtent3DDict) GPUExtent3D;
         GPUImageCopyExternalImage source,
         GPUImageCopyTextureTagged destination,
         GPUExtent3D copySize);
+
+    // https://github.com/whatwg/html/pull/11588 — html-in-canvas (TB9).
+    // (Element or ElementImage) union lands in TB6.
+    [EnabledBySetting=CanvasDrawElementEnabled, RaisesException]
+    undefined copyElementImageToTexture(Element source, GPUImageCopyTextureTagged destination);
+    [EnabledBySetting=CanvasDrawElementEnabled, RaisesException]
+    undefined copyElementImageToTexture(Element source, GPUIntegerCoordinate width, GPUIntegerCoordinate height, GPUImageCopyTextureTagged destination);
+    [EnabledBySetting=CanvasDrawElementEnabled, RaisesException]
+    undefined copyElementImageToTexture(Element source, float sx, float sy, float swidth, float sheight, GPUImageCopyTextureTagged destination);
+    [EnabledBySetting=CanvasDrawElementEnabled, RaisesException]
+    undefined copyElementImageToTexture(Element source, float sx, float sy, float swidth, float sheight, GPUIntegerCoordinate width, GPUIntegerCoordinate height, GPUImageCopyTextureTagged destination);
 };
 GPUQueue includes GPUObjectBase;
 

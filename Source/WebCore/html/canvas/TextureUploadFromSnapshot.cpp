@@ -36,7 +36,7 @@
 
 namespace WebCore {
 
-RefPtr<Image> rasterizeCanvasChildPaintRecord(const CanvasChildPaintRecord& record, const FloatRect& sourceRect, const IntSize& destSize)
+RefPtr<ImageBuffer> rasterizeCanvasChildPaintRecordToBuffer(const CanvasChildPaintRecord& record, const FloatRect& sourceRect, const IntSize& destSize)
 {
     if (sourceRect.isEmpty() || destSize.isEmpty())
         return nullptr;
@@ -51,6 +51,14 @@ RefPtr<Image> rasterizeCanvasChildPaintRecord(const CanvasChildPaintRecord& reco
     gc.translate(-sourceRect.x(), -sourceRect.y());
     gc.drawDisplayList(record.displayList());
 
+    return buffer;
+}
+
+RefPtr<Image> rasterizeCanvasChildPaintRecord(const CanvasChildPaintRecord& record, const FloatRect& sourceRect, const IntSize& destSize)
+{
+    auto buffer = rasterizeCanvasChildPaintRecordToBuffer(record, sourceRect, destSize);
+    if (!buffer)
+        return nullptr;
     return BitmapImage::create(buffer->copyNativeImage());
 }
 

@@ -1,0 +1,3 @@
+
+PASS 6-arg copyElementImageToTexture crops the source rect from the element snapshot
+

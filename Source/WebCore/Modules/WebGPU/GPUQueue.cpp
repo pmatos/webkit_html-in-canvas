@@ -28,12 +28,16 @@
 
 #include "BitmapImage.h"
 #include "CachedImage.h"
+#include "CanvasChildPaintRecord.h"
 #include "CanvasRenderingContext.h"
+#include "Element.h"
+#include "FloatSize.h"
 #include "GPUBuffer.h"
 #include "GPUDevice.h"
 #include "GPUImageCopyExternalImage.h"
 #include "GPUTexture.h"
 #include "GPUTextureDescriptor.h"
+#include "HTMLCanvasElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLVideoElement.h"
 #include "ImageBuffer.h"
@@ -44,6 +48,7 @@
 #include "PixelBuffer.h"
 #include "SVGImage.h"
 #include "SecurityOrigin.h"
+#include "TextureUploadFromSnapshot.h"
 #include "VideoFrame.h"
 #include "WebCodecsVideoFrame.h"
 #include "WebGPUDevice.h"
@@ -288,7 +293,7 @@ static PixelFormat NODELETE toPixelFormat(GPUTextureFormat textureFormat)
     case GPUTextureFormat::Bgra8unorm:
     case GPUTextureFormat::Bgra8unormSRGB:
         return PixelFormat::BGRA8;
-        
+
     case GPUTextureFormat::Rgb9e5ufloat:
     case GPUTextureFormat::Rgb10a2uint:
     case GPUTextureFormat::Rgb10a2unorm:
@@ -1206,6 +1211,73 @@ ExceptionOr<void> GPUQueue::copyExternalImageToTexture(ScriptExecutionContext& c
     });
     callbackScopeIsSafe = false;
 
+    return { };
+}
+
+ExceptionOr<void> GPUQueue::copyElementImageToTexture(Element& source, const GPUImageCopyTextureTagged& destination)
+{
+    return copyElementImageToTextureImpl(source, std::nullopt, std::nullopt, destination);
+}
+
+ExceptionOr<void> GPUQueue::copyElementImageToTexture(Element& source, GPUIntegerCoordinate width, GPUIntegerCoordinate height, const GPUImageCopyTextureTagged& destination)
+{
+    return copyElementImageToTextureImpl(source, std::nullopt, IntSize { static_cast<int>(width), static_cast<int>(height) }, destination);
+}
+
+ExceptionOr<void> GPUQueue::copyElementImageToTexture(Element& source, float sx, float sy, float swidth, float sheight, const GPUImageCopyTextureTagged& destination)
+{
+    return copyElementImageToTextureImpl(source, FloatRect { sx, sy, swidth, sheight }, std::nullopt, destination);
+}
+
+ExceptionOr<void> GPUQueue::copyElementImageToTexture(Element& source, float sx, float sy, float swidth, float sheight, GPUIntegerCoordinate width, GPUIntegerCoordinate height, const GPUImageCopyTextureTagged& destination)
+{
+    return copyElementImageToTextureImpl(source, FloatRect { sx, sy, swidth, sheight }, IntSize { static_cast<int>(width), static_cast<int>(height) }, destination);
+}
+
+ExceptionOr<void> GPUQueue::copyElementImageToTextureImpl(Element& source, std::optional<FloatRect> sourceRect, std::optional<IntSize> explicitDestSize, const GPUImageCopyTextureTagged& destination)
+{
+    // GPUQueue is bound to a Device, not a Canvas, so derive the owning canvas
+    // from the parent edge. verifyDrawElementImageEligibility also enforces
+    // element.parentNode() == &canvas (DrawElementImageEligibility.cpp:61-63),
+    // so if the downcast succeeds the validator will pass that rule; if it fails,
+    // we throw the validator's TypeError message verbatim so a WPT pinning the
+    // wording stays consistent across all canvas APIs.
+    RefPtr canvas = dynamicDowncast<HTMLCanvasElement>(source.parentNode());
+    if (!canvas)
+        return Exception { ExceptionCode::TypeError, "Only immediate children of the <canvas> element can be passed to drawElementImage."_s };
+
+    auto eligibility = canvas->validateChildForDrawElementImage(source);
+    if (eligibility.hasException())
+        return eligibility.releaseException();
+    auto* record = eligibility.releaseReturnValue();
+
+    auto boxSize = record->state().boxSize;
+    FloatRect effectiveSourceRect = sourceRect.value_or(FloatRect { { }, boxSize });
+    IntSize destSize = explicitDestSize.value_or(expandedIntSize(effectiveSourceRect.size()));
+    if (effectiveSourceRect.isEmpty() || destSize.isEmpty())
+        return { };
+
+    RefPtr<ImageBuffer> buffer = rasterizeCanvasChildPaintRecordToBuffer(*record, effectiveSourceRect, destSize);
+    if (!buffer)
+        return { };
+
+    bool needsPremultipliedAlpha = destination.premultipliedAlpha;
+    getImageBytesFromImageBuffer(buffer, needsPremultipliedAlpha, [&](std::span<const uint8_t> imageBytes, size_t columns, size_t rows) {
+        if (!imageBytes.data() || !imageBytes.size() || !rows || (imageBytes.size() % 4))
+            return;
+        auto widthInBytes = imageBytes.size() / rows;
+        GPUImageDataLayout dataLayout { 0, static_cast<GPUSize32>(widthInBytes), static_cast<GPUSize32>(rows) };
+        WebGPU::Extent3D copySize = WebGPU::Extent3DDict { static_cast<uint32_t>(columns), static_cast<uint32_t>(rows), 1 };
+        auto copyDestination = destination.convertToBacking();
+        // Same INT_MAX mip-level workaround as copyExternalImageToTexture
+        // (bug 263692): apply when destination texture lacks RENDER_ATTACHMENT
+        // usage. The !supportedFormat branch of the existing workaround does
+        // not apply here — our snapshot is always RGBA8 after getPixelBuffer.
+        auto destinationTexture = destination.texture;
+        if (!(destinationTexture->usage() & GPUTextureUsage::RENDER_ATTACHMENT))
+            copyDestination.mipLevel = INT_MAX;
+        m_backing->writeTexture(copyDestination, imageBytes, dataLayout.convertToBacking(), copySize);
+    });
     return { };
 }
 

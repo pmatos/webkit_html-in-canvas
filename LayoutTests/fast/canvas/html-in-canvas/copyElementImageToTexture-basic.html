@@ -1,0 +1,66 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true WebGPUEnabled=true ] -->
+<title>WebGPU GPUQueue.copyElementImageToTexture — 2-arg basic upload (TB9)</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<style>
+  body { margin: 0; }
+  #cvs { display: block; }
+  #child { width: 32px; height: 32px; background: rgb(255, 0, 0); }
+</style>
+<body>
+<canvas id="cvs" width="32" height="32" layoutsubtree>
+    <div id="child"></div>
+</canvas>
+<script>
+function nextPaint() {
+    return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+
+async function readbackTexture(device, texture, width, height) {
+    const bytesPerRow = Math.ceil((width * 4) / 256) * 256;
+    const readback = device.createBuffer({
+        size: bytesPerRow * height,
+        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+    });
+    const encoder = device.createCommandEncoder();
+    encoder.copyTextureToBuffer(
+        { texture },
+        { buffer: readback, bytesPerRow, rowsPerImage: height },
+        { width, height, depthOrArrayLayers: 1 });
+    device.queue.submit([encoder.finish()]);
+    await readback.mapAsync(GPUMapMode.READ);
+    const mapped = new Uint8Array(readback.getMappedRange().slice(0));
+    readback.unmap();
+    // Repack to tightly-packed RGBA (drop row padding).
+    const out = new Uint8Array(width * height * 4);
+    for (let y = 0; y < height; ++y)
+        out.set(mapped.subarray(y * bytesPerRow, y * bytesPerRow + width * 4), y * width * 4);
+    return out;
+}
+
+promise_test(async () => {
+    await nextPaint();
+    const child = document.getElementById("child");
+    const adapter = await navigator.gpu.requestAdapter();
+    assert_true(!!adapter, "adapter");
+    const device = await adapter.requestDevice();
+    assert_true(!!device, "device");
+
+    const texture = device.createTexture({
+        size: { width: 32, height: 32 },
+        format: "rgba8unorm",
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC,
+    });
+    device.queue.copyElementImageToTexture(child, { texture });
+
+    const pixels = await readbackTexture(device, texture, 32, 32);
+
+    // Centre pixel — robust to any aliasing at edges.
+    const i = (16 * 32 + 16) * 4;
+    assert_equals(pixels[i], 255, "centre red");
+    assert_equals(pixels[i + 1], 0, "centre green");
+    assert_equals(pixels[i + 2], 0, "centre blue");
+    assert_equals(pixels[i + 3], 255, "centre alpha");
+}, "copyElementImageToTexture(source, destination) uploads element pixels at natural size");
+</script>
+</body>

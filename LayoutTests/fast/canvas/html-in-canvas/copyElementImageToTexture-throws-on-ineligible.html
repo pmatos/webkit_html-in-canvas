@@ -1,0 +1,53 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true WebGPUEnabled=true ] -->
+<title>WebGPU GPUQueue.copyElementImageToTexture synchronous error paths (TB9)</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<body>
+<!--
+  One canvas, one device, one texture. The canvas deliberately has NO
+  layoutsubtree attribute so that:
+    - passing a grandchild triggers rule 2 → TypeError (parent check fires first
+      via the same wording verifyDrawElementImageEligibility uses),
+    - passing a direct child triggers rule 3 → InvalidStateError.
+  Rule 1 (nested layoutsubtree canvas) and rule 4 (missing snapshot) are
+  exercised by separate cycles in TB11 / the eligibility suite.
+-->
+<canvas id="cvs" width="32" height="32">
+    <div id="direct-child">
+        <span id="grandchild"></span>
+    </div>
+</canvas>
+<script>
+function el(id) { return document.getElementById(id); }
+
+let device, texture, destination;
+
+promise_setup(async () => {
+    const adapter = await navigator.gpu.requestAdapter();
+    device = await adapter.requestDevice();
+    texture = device.createTexture({
+        size: { width: 32, height: 32 },
+        format: "rgba8unorm",
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST,
+    });
+    destination = { texture };
+});
+
+test(() => {
+    assert_true("copyElementImageToTexture" in device.queue,
+        "copyElementImageToTexture is exposed on GPUQueue when CanvasDrawElementEnabled is true");
+}, "IDL: copyElementImageToTexture method is exposed under the runtime preference");
+
+test(() => {
+    assert_throws_js(TypeError, () => {
+        device.queue.copyElementImageToTexture(el("grandchild"), destination);
+    });
+}, "throws TypeError when the element is not a direct child of the canvas (rule 2)");
+
+test(() => {
+    assert_throws_dom("InvalidStateError", () => {
+        device.queue.copyElementImageToTexture(el("direct-child"), destination);
+    });
+}, "throws InvalidStateError when the canvas has no layoutsubtree attribute (rule 3)");
+</script>
+</body>

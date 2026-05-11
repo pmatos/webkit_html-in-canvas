@@ -26,12 +26,14 @@
 #pragma once
 
 #include "BufferSource.h"
+#include "FloatRect.h"
 #include "GPUCommandBuffer.h"
 #include "GPUExtent3DDict.h"
 #include "GPUImageCopyTexture.h"
 #include "GPUImageCopyTextureTagged.h"
 #include "GPUImageDataLayout.h"
 #include "GPUIntegralTypes.h"
+#include "IntSize.h"
 #include "WebGPUQueue.h"
 #include <optional>
 #include <wtf/Ref.h>
@@ -42,6 +44,7 @@
 
 namespace WebCore {
 
+class Element;
 class GPUBuffer;
 struct GPUImageCopyExternalImage;
 
@@ -83,11 +86,18 @@ public:
         const GPUImageCopyTextureTagged& destination,
         const GPUExtent3D& copySize);
 
+    ExceptionOr<void> copyElementImageToTexture(Element&, const GPUImageCopyTextureTagged&);
+    ExceptionOr<void> copyElementImageToTexture(Element&, GPUIntegerCoordinate width, GPUIntegerCoordinate height, const GPUImageCopyTextureTagged&);
+    ExceptionOr<void> copyElementImageToTexture(Element&, float sx, float sy, float swidth, float sheight, const GPUImageCopyTextureTagged&);
+    ExceptionOr<void> copyElementImageToTexture(Element&, float sx, float sy, float swidth, float sheight, GPUIntegerCoordinate width, GPUIntegerCoordinate height, const GPUImageCopyTextureTagged&);
+
     WebGPU::Queue& backing() { return m_backing; }
     const WebGPU::Queue& backing() const { return m_backing; }
 
 private:
     GPUQueue(Ref<WebGPU::Queue>&&, WebGPU::Device&);
+
+    ExceptionOr<void> copyElementImageToTextureImpl(Element&, std::optional<FloatRect> sourceRect, std::optional<IntSize> explicitDestSize, const GPUImageCopyTextureTagged&);
 
     const Ref<WebGPU::Queue> m_backing;
     WeakPtr<WebGPU::Device> m_device;

@@ -1,0 +1,3 @@
+
+PASS 8-arg copyElementImageToTexture crops then scales; zero-area follow-up call is a no-op
+

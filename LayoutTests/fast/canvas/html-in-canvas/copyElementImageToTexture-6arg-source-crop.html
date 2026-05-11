@@ -1,0 +1,74 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true WebGPUEnabled=true ] -->
+<title>WebGPU GPUQueue.copyElementImageToTexture — 6-arg source-rect crop (TB9)</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<style>
+  body { margin: 0; }
+  #cvs { display: block; }
+  /* 32×32 element split horizontally: left half red, right half green. */
+  #child {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(to right, rgb(255, 0, 0) 0 50%, rgb(0, 255, 0) 50% 100%);
+  }
+</style>
+<body>
+<canvas id="cvs" width="32" height="32" layoutsubtree>
+    <div id="child"></div>
+</canvas>
+<script>
+function nextPaint() {
+    return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+
+async function readbackTexture(device, texture, width, height) {
+    const bytesPerRow = Math.ceil((width * 4) / 256) * 256;
+    const readback = device.createBuffer({
+        size: bytesPerRow * height,
+        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+    });
+    const encoder = device.createCommandEncoder();
+    encoder.copyTextureToBuffer(
+        { texture },
+        { buffer: readback, bytesPerRow, rowsPerImage: height },
+        { width, height, depthOrArrayLayers: 1 });
+    device.queue.submit([encoder.finish()]);
+    await readback.mapAsync(GPUMapMode.READ);
+    const mapped = new Uint8Array(readback.getMappedRange().slice(0));
+    readback.unmap();
+    const out = new Uint8Array(width * height * 4);
+    for (let y = 0; y < height; ++y)
+        out.set(mapped.subarray(y * bytesPerRow, y * bytesPerRow + width * 4), y * width * 4);
+    return out;
+}
+
+promise_test(async () => {
+    await nextPaint();
+    const child = document.getElementById("child");
+    const adapter = await navigator.gpu.requestAdapter();
+    const device = await adapter.requestDevice();
+
+    const texture = device.createTexture({
+        size: { width: 16, height: 16 },
+        format: "rgba8unorm",
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC,
+    });
+    // 6-arg overload: crop the right half (green); destSize defaults to source dims.
+    device.queue.copyElementImageToTexture(child,
+        /*sx*/ 16, /*sy*/ 0, /*swidth*/ 16, /*sheight*/ 16,
+        { texture });
+
+    const pixels = await readbackTexture(device, texture, 16, 16);
+
+    // Whole texture should be green; sample two interior points to skip the seam.
+    const a = (4 * 16 + 4) * 4;
+    const b = (12 * 16 + 12) * 4;
+    for (const [label, i] of [["a", a], ["b", b]]) {
+        assert_equals(pixels[i], 0, `${label}: red`);
+        assert_equals(pixels[i + 1], 255, `${label}: green`);
+        assert_equals(pixels[i + 2], 0, `${label}: blue`);
+        assert_equals(pixels[i + 3], 255, `${label}: alpha`);
+    }
+}, "6-arg copyElementImageToTexture crops the source rect from the element snapshot");
+</script>
+</body>

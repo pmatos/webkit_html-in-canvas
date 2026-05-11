@@ -1,0 +1,76 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true WebGPUEnabled=true ] -->
+<title>WebGPU GPUQueue.copyElementImageToTexture — 4-arg destination size (TB9)</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<style>
+  body { margin: 0; }
+  #cvs { display: block; }
+  /* 32×32 element split horizontally: left half red, right half green. */
+  #child {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(to right, rgb(255, 0, 0) 0 50%, rgb(0, 255, 0) 50% 100%);
+  }
+</style>
+<body>
+<canvas id="cvs" width="32" height="32" layoutsubtree>
+    <div id="child"></div>
+</canvas>
+<script>
+function nextPaint() {
+    return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+
+async function readbackTexture(device, texture, width, height) {
+    const bytesPerRow = Math.ceil((width * 4) / 256) * 256;
+    const readback = device.createBuffer({
+        size: bytesPerRow * height,
+        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+    });
+    const encoder = device.createCommandEncoder();
+    encoder.copyTextureToBuffer(
+        { texture },
+        { buffer: readback, bytesPerRow, rowsPerImage: height },
+        { width, height, depthOrArrayLayers: 1 });
+    device.queue.submit([encoder.finish()]);
+    await readback.mapAsync(GPUMapMode.READ);
+    const mapped = new Uint8Array(readback.getMappedRange().slice(0));
+    readback.unmap();
+    const out = new Uint8Array(width * height * 4);
+    for (let y = 0; y < height; ++y)
+        out.set(mapped.subarray(y * bytesPerRow, y * bytesPerRow + width * 4), y * width * 4);
+    return out;
+}
+
+promise_test(async () => {
+    await nextPaint();
+    const child = document.getElementById("child");
+    const adapter = await navigator.gpu.requestAdapter();
+    const device = await adapter.requestDevice();
+
+    const texture = device.createTexture({
+        size: { width: 16, height: 16 },
+        format: "rgba8unorm",
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC,
+    });
+    // 4-arg overload: explicit destination dims (16×16) downscale the 32×32 element.
+    device.queue.copyElementImageToTexture(child, 16, 16, { texture });
+
+    const pixels = await readbackTexture(device, texture, 16, 16);
+
+    // Left-half centre pixel: column 4, row 8.
+    const left = (8 * 16 + 4) * 4;
+    assert_equals(pixels[left], 255, "left-half red");
+    assert_equals(pixels[left + 1], 0, "left-half green");
+    assert_equals(pixels[left + 2], 0, "left-half blue");
+    assert_equals(pixels[left + 3], 255, "left-half alpha");
+
+    // Right-half centre pixel: column 12.
+    const right = (8 * 16 + 12) * 4;
+    assert_equals(pixels[right], 0, "right-half red");
+    assert_equals(pixels[right + 1], 255, "right-half green");
+    assert_equals(pixels[right + 2], 0, "right-half blue");
+    assert_equals(pixels[right + 3], 255, "right-half alpha");
+}, "4-arg copyElementImageToTexture scales the element snapshot to the requested destination dimensions");
+</script>
+</body>

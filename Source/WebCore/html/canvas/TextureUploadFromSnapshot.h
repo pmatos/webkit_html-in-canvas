@@ -33,19 +33,29 @@ namespace WebCore {
 
 class CanvasChildPaintRecord;
 class Image;
+class ImageBuffer;
 
-// Rasterises a CanvasChildPaintRecord into an Image suitable for
-// WebGLRenderingContextBase::texImageImpl (TB8) and, in the future,
-// GPUQueue::copyElementImageToTexture (TB9).
+// Rasterises a CanvasChildPaintRecord into an ImageBuffer. WebGPU's
+// GPUQueue::copyElementImageToTexture (TB9) reads pixels back out of the
+// buffer via ImageBuffer::getPixelBuffer; WebGL's texElementImage2D (TB8)
+// receives an Image wrapper via the sibling rasterizeCanvasChildPaintRecord
+// below.
 //
-// sourceRect is the rectangle of the recorded element to copy, in the element's
-// natural CSS-px coordinate space. destSize is the output pixel size; when
-// destSize differs from sourceRect's size the display list is replayed at the
-// resulting scale.
+// sourceRect is in the element's natural CSS-px coordinate space; destSize is
+// the output pixel size. When destSize differs from sourceRect's size the
+// display list is replayed at the resulting scale.
 //
 // Returns nullptr on zero-area sourceRect / destSize, or on ImageBuffer
-// allocation failure. Callers treat null as a silent no-op (matches the
-// zero-area behaviour pinned by tex-element-image-2d-basic.html:83-84).
+// allocation failure. Callers treat null as a silent no-op.
+RefPtr<ImageBuffer> rasterizeCanvasChildPaintRecordToBuffer(const CanvasChildPaintRecord&, const FloatRect& sourceRect, const IntSize& destSize);
+
+// Thin wrapper around rasterizeCanvasChildPaintRecordToBuffer that returns the
+// rasterised buffer as a BitmapImage, suitable for
+// WebGLRenderingContextBase::texImageImpl.
+//
+// Returns nullptr on the same conditions as the sibling helper. Callers treat
+// null as a silent no-op (matches the zero-area behaviour pinned by
+// tex-element-image-2d-basic.html:83-84).
 WEBCORE_EXPORT RefPtr<Image> rasterizeCanvasChildPaintRecord(const CanvasChildPaintRecord&, const FloatRect& sourceRect, const IntSize& destSize);
 
 } // namespace WebCore
