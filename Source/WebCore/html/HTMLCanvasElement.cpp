@@ -584,22 +584,81 @@ CanvasChildPaintRecord* HTMLCanvasElement::canvasChildPaintRecord(NodeIdentifier
     return it == m_canvasChildPaintRecords.end() ? nullptr : it->value.get();
 }
 
+// TB5b.1: WebKit's RenderLayer::paintLayer dispatches multiple PaintPhases per
+// call (BlockBackground, ChildBlockBackgrounds, Foreground, Outline, ...). The
+// number of phases that emit save/clip/restore wrappers varies between paint
+// walks for the same child, producing two byte-different display lists for
+// identical visible content — the "long form" wraps the fill in
+// save+clip+restore plus two empty wrappers; the "short form" emits a bare
+// fill and one empty save/restore. asText(0) sees these as different; we
+// don't want that to count as a content change.
+//
+// Normalise by stripping structural noise from each recording before
+// comparison: bare (save)/(restore) lines and the full multi-line
+// (clip ...) / (clip-out ...) / (clip-path ...) sub-trees. The fingerprint
+// keeps paint-meaningful items (fill-*, stroke-*, draw-*, set-*, etc).
+static String canvasChildPaintFingerprint(const DisplayList::DisplayList& displayList)
+{
+    auto raw = displayList.asText({ });
+    StringBuilder builder;
+    int skipDepth = 0; // >0 means we're inside a (clip*) block we're stripping.
+
+    auto countParens = [](StringView text) -> std::pair<int, int> {
+        int opens = 0, closes = 0;
+        for (auto c : text.codeUnits()) {
+            if (c == '(')
+                ++opens;
+            else if (c == ')')
+                ++closes;
+        }
+        return { opens, closes };
+    };
+
+    for (auto line : StringView(raw).split('\n')) {
+        auto trimmed = line.trim(isASCIIWhitespace<char16_t>);
+        if (trimmed.isEmpty())
+            continue;
+
+        if (skipDepth > 0) {
+            // Continuation of a (clip ...) block. Just track depth.
+            auto [opens, closes] = countParens(trimmed);
+            skipDepth += opens - closes;
+            if (skipDepth < 0)
+                skipDepth = 0;
+            continue;
+        }
+
+        if (trimmed == "(save)"_s || trimmed == "(restore)"_s)
+            continue;
+
+        if (trimmed.startsWith("(clip"_s)) {
+            auto [opens, closes] = countParens(trimmed);
+            skipDepth = opens - closes;
+            if (skipDepth < 0)
+                skipDepth = 0;
+            continue;
+        }
+
+        builder.append(trimmed);
+        builder.append('\n');
+    }
+    return builder.toString();
+}
+
 void HTMLCanvasElement::setCanvasChildPaintRecord(Element& child, NodeIdentifier id, std::unique_ptr<CanvasChildPaintRecord> record)
 {
-    // TB5a: schedule a paint event only when the new snapshot's content differs from
-    // the existing one for this child. WebKit re-records the layoutsubtree child every
-    // paint walk regardless of invalidation, so a byte-identical replay must NOT fire
-    // (matches "should not fire without changes" in onpaint.html). For the first-ever
-    // recording of a child (no existing entry), suppress the fire too: that is either
-    // initial-load baseline (no observable change) or a child added before any
-    // listener was attached.
-    //
-    // Comparison uses asText({}) as a content fingerprint — defaultflags exclude
-    // platform-specific SetState payload that varies between byte-identical recordings.
+    // Schedule a paint event only when the new snapshot's paint-meaningful
+    // content differs from the existing one. The recording walk re-records on
+    // every canvas paint regardless of invalidation, so a content-identical
+    // replay must NOT fire (matches "should not fire without changes"). For
+    // the first-ever recording (no existing entry) suppress too — that's the
+    // initial-load baseline.
     auto it = m_canvasChildPaintRecords.find(id);
     bool contentChanged = false;
-    if (it != m_canvasChildPaintRecords.end() && record && it->value)
-        contentChanged = it->value->displayList().asText({ }) != record->displayList().asText({ });
+    if (it != m_canvasChildPaintRecords.end() && record && it->value) {
+        contentChanged = canvasChildPaintFingerprint(it->value->displayList())
+            != canvasChildPaintFingerprint(record->displayList());
+    }
 
     m_canvasChildPaintRecords.set(id, WTF::move(record));
 

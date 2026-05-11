@@ -1,4 +1,4 @@
 
 
-FAIL onpaint should fire after iframe changes. assert_equals: Without changes, onpaint should not fire. expected 0 but got 1
+FAIL onpaint should fire after iframe changes. assert_equals: onpaint should not fire without changes. expected 1 but got 2
 
