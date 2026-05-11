@@ -28,29 +28,48 @@ WebKit does **not** build with raw `cmake .` from the root. Use the canonical sc
 
 **Local quirk:** the user's global `python3` is shimmed to a `uv run python3` enforcement guard (Trail of Bits modern-python plugin, at `~/.claude/plugins/cache/trailofbits/modern-python/.../shims/python3`). WebKit's Python tooling does not coexist with this — invocations of `Tools/Scripts/{build-webkit,update-webkit-flatpak,run-webkit-tests,...}` need a shim-free `PATH`. Either invoke via `/usr/bin/python3` directly, or `env -u PATH PATH=/usr/local/bin:/usr/bin:/bin ...`. The repo's wrapper scripts (`Tools/Scripts/build-webkit` etc.) are perl, but they `exec` python3 internally, so the same shim-bypass applies.
 
+**MANDATORY toolchain:** every build in this checkout uses **clang + clang++ + lld**. Never gcc. Never `ld.bfd`. The gcc + libstdc++ debug-link path has OOMed this machine three times; clang+lld is the only path Paulo wants used here. Pass `CC=clang CXX=clang++ -DCMAKE_LINKER_TYPE=LLD` on every fresh configure, and never edit `CMakeCache.txt` to revert.
+
+**MANDATORY build-memory cap:** every long-running build invocation runs inside a `systemd-run --user --scope -p MemoryMax=96G -p MemorySwapMax=0` cgroup, plus a watcher that applies the same cap to `app-flatpak-org.webkit.Sdk-*.scope` after flatpak spawns it (flatpak escapes the launcher's cgroup). Default parallelism: `NUMBER_OF_PROCESSORS=12`. Higher values have OOM-killed inside the cap. See `~/.claude/projects/-home-igalia-pmatos-dev-WebKit-HTML-in-canvas/memory/feedback_build_with_clang.md` and `feedback_cap_build_memory.md` for the canonical invocations.
+
 Once a dependency path is chosen, build with:
 
 ```sh
 # Flatpak path (autonomous; matches what's set up in this checkout)
 PATH=/usr/local/bin:/usr/bin:/bin WEBKIT_FLATPAK=1 \
   /usr/bin/python3 Tools/Scripts/update-webkit-flatpak --gtk    # one-time; downloads SDK
-NUMBER_OF_PROCESSORS=24 PATH=/usr/local/bin:/usr/bin:/bin WEBKIT_FLATPAK=1 \
-  perl Tools/Scripts/build-webkit --gtk --debug --cmakeargs="-DUSE_LIBRICE=OFF"
+
+# Cold/full build (clang+lld + 96G cap + 12 workers)
+# SDK CMake 3.27 lacks -DCMAKE_LINKER_TYPE=LLD; use -fuse-ld=lld linker flags.
+# clang/clang++/lld live at /usr/lib/sdk/llvm18/bin inside the SDK.
+systemd-run --user --scope -p MemoryMax=96G -p MemorySwapMax=0 -- \
+  bash -c 'PATH=/usr/local/bin:/usr/bin:/bin WEBKIT_FLATPAK=1 \
+    perl Tools/Scripts/webkit-flatpak --gtk --debug \
+      -c bash -c "PATH=/usr/lib/sdk/llvm18/bin:/usr/local/bin:/usr/bin:/bin NUMBER_OF_PROCESSORS=12 \
+        CC=clang CXX=clang++ \
+        perl Tools/Scripts/build-webkit --gtk --debug \
+          --cmakeargs=\"-DUSE_LIBRICE=OFF -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld -DCMAKE_SHARED_LINKER_FLAGS=-fuse-ld=lld -DCMAKE_MODULE_LINKER_FLAGS=-fuse-ld=lld\""'
 # → WebKitBuild/GTK/Debug/bin/WebKitTestRunner
+#
+# In a separate shell, cap the flatpak scope that just spawned (see memory files
+# for the watcher one-liner).
 
 # wkdev-sdk path (canonical)
 wkdev-enter --name wkdev
-# inside container:
-Tools/Scripts/build-webkit --gtk --debug
+# inside container, same toolchain rules apply:
+CC=clang CXX=clang++ Tools/Scripts/build-webkit --gtk --debug \
+  --cmakeargs="-DCMAKE_LINKER_TYPE=LLD"
 ```
 
 `USE_LIBRICE=OFF` because the WebKit SDK 23.08 doesn't ship `librice-{io,proto}` and we don't need WebRTC for canvas work. Pass via `--cmakeargs=...` (the `--` separator is for ninja, not cmake).
 
-CMake preset path (`cmake --preset gtk-dev-debug && cmake --build --preset gtk-dev-debug`) gives `compile_commands.json` for clangd/IDEs but still requires the chosen dependency path to have run first.
+**Switching an existing gcc build dir to clang requires `rm -rf WebKitBuild/GTK/Debug` and a full reconfigure.** The cache pins the compiler. Confirm with Paulo before destroying a build dir.
+
+CMake preset path (`cmake --preset gtk-dev-debug && cmake --build --preset gtk-dev-debug`) gives `compile_commands.json` for clangd/IDEs but still requires the chosen dependency path to have run first **and** the same clang+lld toolchain pinned in the preset.
 
 Other ports (`--wpe`, `--release` for Mac, etc.) exist but are not the target; default to GTK debug unless the user says otherwise.
 
-A cold GTK debug build is **1–3 hours** and peaks at ~6 GB RAM per concurrent translation unit on Debug. Limit parallelism with `NUMBER_OF_PROCESSORS=N` if memory-constrained — 168 GB RAM machine OOMed at the default `nproc` (61), `NUMBER_OF_PROCESSORS=24` is safe.
+A cold GTK debug build is **1–3 hours** and peaks well within the 96G cap with clang+lld at `NUMBER_OF_PROCESSORS=12`. Incremental rebuilds finish in minutes.
 
 ### Running tests in Flatpak mode
 
