@@ -849,6 +849,14 @@ public:
     // intersection-observer step and the next paint, with swap-and-iterate semantics.
     WEBCORE_EXPORT void scheduleCanvasPaintEvent(HTMLCanvasElement&);
     void dispatchCanvasPaintEvents();
+
+    // TB5b.2: track <canvas layoutsubtree> elements so we can force a paint walk
+    // (and therefore a snapshot re-record) on every rendering update tick. This
+    // covers descendants with compositor-promoted animations (e.g.,
+    // transform/opacity keyframes) whose per-frame ticks otherwise bypass the
+    // main-thread paint pipeline and never trigger setCanvasChildPaintRecord.
+    void registerLayoutSubtreeCanvas(HTMLCanvasElement&);
+    void unregisterLayoutSubtreeCanvas(HTMLCanvasElement&);
     // Trigger a rendering update in the current runloop. Only used for testing.
     void triggerRenderingUpdateForTesting();
 
@@ -1608,6 +1616,11 @@ private:
     // next rendering-update tick. Populated by Page::scheduleCanvasPaintEvent and
     // drained by Page::dispatchCanvasPaintEvents (TB5a).
     WeakHashSet<HTMLCanvasElement, WeakPtrImplWithEventTargetData> m_canvasesNeedingPaintEvent;
+    // TB5b.2: registry of all live <canvas layoutsubtree> elements on the page;
+    // used to force-invalidate them every rendering update tick so the paint
+    // walk re-runs and setCanvasChildPaintRecord sees compositor-promoted
+    // animation ticks.
+    WeakHashSet<HTMLCanvasElement, WeakPtrImplWithEventTargetData> m_layoutSubtreeCanvases;
 #if ENABLE(ACCESSIBILITY_NON_BLINKING_CURSOR)
     bool m_prefersNonBlinkingCursor { false };
 #endif

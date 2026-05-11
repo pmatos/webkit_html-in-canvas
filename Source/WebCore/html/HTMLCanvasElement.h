@@ -207,6 +207,8 @@ private:
 
     void didMoveToNewDocument(Document& oldDocument, Document& newDocument) final;
     void childrenChanged(const ChildChange&) final;
+    NeedsPostConnectionSteps insertionSteps(InsertionType, ContainerNode& parentOfInsertedTree) final;
+    void removingSteps(RemovalType, ContainerNode& oldParentOfRemovedTree) final;
 
     std::optional<FloatRect> computeDirtyRectangleIfNeeded(const std::optional<FloatRect>&) const;
 

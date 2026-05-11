@@ -1,4 +1,4 @@
 
 
-FAIL onpaint should fire after iframe changes. assert_equals: onpaint should not fire without changes. expected 1 but got 2
+FAIL onpaint should fire after iframe changes. promise_test: Unhandled rejection with value: object "TypeError: canvas.moveBefore is not a function. (In 'canvas.moveBefore(iframe, null)', 'canvas.moveBefore' is undefined)"
 

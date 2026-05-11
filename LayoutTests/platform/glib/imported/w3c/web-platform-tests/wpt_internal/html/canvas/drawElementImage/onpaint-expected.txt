@@ -4,7 +4,7 @@ PASS onpaint should fire once if a canvas child changes
 FAIL onpaint should fire if a canvas child is added or removed assert_equals: onpaint should fire after a child is removed. expected 1 but got 0
 PASS onpaint should fire once if a canvas grandchild changes
 PASS onpaint should not fire if the canvas itself changes
-FAIL onpaint should not fire if a canvas sibling changes assert_equals: expected 0 but got 1
+PASS onpaint should not fire if a canvas sibling changes
 PASS onpaint should not fire if a canvas ancestor changes
 PASS onpaint should not fire after canvas child transform changes
 FAIL onpaint should not fire after canvas drawing operations assert_equals: drawing operations should not cause onpaint to fire. expected 1 but got 2

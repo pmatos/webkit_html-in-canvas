@@ -2119,6 +2119,16 @@ void Page::scheduleCanvasPaintEvent(HTMLCanvasElement& canvas)
     scheduleRenderingUpdate(RenderingUpdateStep::CanvasPaintEvents);
 }
 
+void Page::registerLayoutSubtreeCanvas(HTMLCanvasElement& canvas)
+{
+    m_layoutSubtreeCanvases.add(canvas);
+}
+
+void Page::unregisterLayoutSubtreeCanvas(HTMLCanvasElement& canvas)
+{
+    m_layoutSubtreeCanvases.remove(canvas);
+}
+
 void Page::dispatchCanvasPaintEvents()
 {
     // Swap-and-iterate so that a canvas re-enqueued during a handler (e.g. via
@@ -2325,6 +2335,18 @@ void Page::updateRendering()
     runProcessingStep(RenderingUpdateStep::Animations, [] (Document& document) {
         document.updateAnimationsAndSendEvents();
     });
+
+    // TB5b.2: force-invalidate every <canvas layoutsubtree> so the paint walk
+    // re-runs this tick. Compositor-promoted animations (transform, opacity
+    // keyframes on descendants) advance on the compositor thread and never
+    // trigger main-thread style/paint invalidation; without this, the canvas
+    // layer is treated as clean and RenderLayer::paintList — where TB1b's
+    // setCanvasChildPaintRecord lives — is skipped after the initial layout.
+    // Repainting is page-wide, not per-document; the registry is on Page.
+    for (Ref canvas : m_layoutSubtreeCanvases) {
+        if (CheckedPtr renderer = canvas->renderer())
+            renderer->repaint();
+    }
 
 #if ENABLE(FULLSCREEN_API)
     runProcessingStep(RenderingUpdateStep::Fullscreen, [] (Document& document) {

@@ -183,6 +183,15 @@ void HTMLCanvasElement::attributeChanged(const QualifiedName& name, const AtomSt
         // Adjuster) and our own renderer's canHaveChildren()/requiresLayer(). A pure
         // style invalidation isn't sufficient — the render tree must be rebuilt.
         invalidateStyleAndRenderersForSubtree();
+        // TB5b.2: register/unregister with the page-level set that force-invalidates
+        // layoutsubtree canvases each rendering update so compositor-promoted
+        // animations on descendants are reflected in the snapshot recording.
+        if (RefPtr page = document().page()) {
+            if (hasAttributeWithoutSynchronization(layoutsubtreeAttr))
+                page->registerLayoutSubtreeCanvas(*this);
+            else
+                page->unregisterLayoutSubtreeCanvas(*this);
+        }
     }
     HTMLElement::attributeChanged(name, oldValue, newValue, attributeModificationReason);
 }
@@ -1083,7 +1092,42 @@ void HTMLCanvasElement::didMoveToNewDocument(Document& oldDocument, Document& ne
         oldDocument.removeCanvasNeedingPreparationForDisplayOrFlush(*context);
         newDocument.addCanvasNeedingPreparationForDisplayOrFlush(*context);
     }
+    // TB5b.2: move our entry in the layoutsubtree-canvas registry between Pages.
+    if (hasAttributeWithoutSynchronization(HTMLNames::layoutsubtreeAttr)) {
+        if (RefPtr oldPage = oldDocument.page())
+            oldPage->unregisterLayoutSubtreeCanvas(*this);
+        if (RefPtr newPage = newDocument.page())
+            newPage->registerLayoutSubtreeCanvas(*this);
+    }
     HTMLElement::didMoveToNewDocument(oldDocument, newDocument);
+}
+
+Node::NeedsPostConnectionSteps HTMLCanvasElement::insertionSteps(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
+{
+    auto result = HTMLElement::insertionSteps(insertionType, parentOfInsertedTree);
+    // TB5b.2: when this canvas joins a connected tree, register with the page so
+    // the rendering update loop force-invalidates it each tick. attributeChanged
+    // also tries to register but document().page() may be null during HTML parse
+    // (the canvas is created before its DocumentFragment connects); this hook is
+    // the reliable one.
+    if (insertionType.connectedToDocument
+        && hasAttributeWithoutSynchronization(HTMLNames::layoutsubtreeAttr)) {
+        if (RefPtr page = document().page())
+            page->registerLayoutSubtreeCanvas(*this);
+    }
+    return result;
+}
+
+void HTMLCanvasElement::removingSteps(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
+{
+    // TB5b.2: drop the registration as the canvas leaves the document. The
+    // WeakHashSet would clean up on its own when the element dies, but doing
+    // it here keeps the registry tight while the element is detached.
+    if (removalType.disconnectedFromDocument) {
+        if (RefPtr page = document().page())
+            page->unregisterLayoutSubtreeCanvas(*this);
+    }
+    HTMLElement::removingSteps(removalType, oldParentOfRemovedTree);
 }
 
 bool HTMLCanvasElement::needsPreparationForDisplay()
