@@ -1,0 +1,46 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>drawElementImage records snapshots for SVG roots and nested canvas direct children (issue #22)</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<body>
+<canvas id="c-svg" width="200" height="200" layoutsubtree>
+    <svg id="svg-child" width="200" height="200">
+        <rect x="0" y="0" width="100" height="100" fill="green"/>
+    </svg>
+</canvas>
+<canvas id="c-nested" width="100" height="100" layoutsubtree>
+    <canvas id="nested-child" width="100" height="100"></canvas>
+</canvas>
+<script>
+function nextPaint() {
+    return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+
+promise_test(async () => {
+    const canvas = document.getElementById("c-svg");
+    const svg = document.getElementById("svg-child");
+    await nextPaint();
+    // The recording walk must produce a CanvasChildPaintRecord for the <svg>
+    // direct child. Pre-fix, drawElementImage throws InvalidStateError
+    // "No snapshot recorded for element." because RenderLayer's recording
+    // loop fails to capture display-list items for RenderSVGRoot subtrees.
+    canvas.getContext("2d").drawElementImage(svg, 0, 0);
+}, "SVG root direct child of <canvas layoutsubtree> records a snapshot");
+
+promise_test(async () => {
+    const canvas = document.getElementById("c-nested");
+    const nested = document.getElementById("nested-child");
+    // Paint into the nested canvas so its backing buffer is non-empty.
+    const nestedCtx = nested.getContext("2d");
+    nestedCtx.fillStyle = "green";
+    nestedCtx.fillRect(0, 0, 100, 100);
+    await nextPaint();
+    // 100x100 area = 10000 exceeds canvasAreaThresholdRequiringCompositing
+    // (5000 at RenderLayerCompositor.cpp:125), so the nested canvas is a
+    // composited layer. Pre-fix, RenderLayer::paintLayer takes the
+    // composited-destination early-return at line 3337-3339 because the
+    // recording walk does not pass PaintBehavior::FlattenCompositingLayers.
+    canvas.getContext("2d").drawElementImage(nested, 0, 0);
+}, "Nested <canvas> direct child of <canvas layoutsubtree> records a snapshot");
+</script>
+</body>

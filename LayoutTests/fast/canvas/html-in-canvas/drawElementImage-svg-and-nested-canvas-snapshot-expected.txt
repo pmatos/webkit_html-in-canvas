@@ -1,0 +1,5 @@
+
+
+PASS SVG root direct child of <canvas layoutsubtree> records a snapshot
+PASS Nested <canvas> direct child of <canvas layoutsubtree> records a snapshot
+

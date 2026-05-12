@@ -1486,15 +1486,6 @@ imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privac
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/search-text-painted-overlay-path.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/spelling-ignored-fast-path.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/spelling-ignored-overlay-path.html [ Skip ]
-# D. Snapshot pipeline gap — RenderLayer's recording walk (TB1b, RenderLayer.cpp
-#    ~line 4047) doesn't emit a CanvasChildPaintRecord for SVG roots or nested
-#    <canvas> children. drawElementImage(svgChild,...) and
-#    drawElementImage(nestedCanvas,...) then throw InvalidStateError "No
-#    snapshot recorded for element." Real TB1b follow-up.
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/nested-canvas-invalidation.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/svg-foreign-object.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/svg-rect.html [ Skip ]
-
 # TB12 follow-up — reftests imported from Chromium now detect correctly after
 # adding -expected.html companions. The 17 below fail the pixel comparison
 # against the Chromium-authored reference, exposing real WebKit-vs-Blink

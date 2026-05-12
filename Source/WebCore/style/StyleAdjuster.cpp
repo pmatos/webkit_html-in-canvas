@@ -477,14 +477,23 @@ void Adjuster::adjust(RenderStyle& style) const
                 style.setIsolation(Isolation::Isolate);
 
             // Each direct child of <canvas layoutsubtree> is blockified, position:
-            // static, and gains paint containment so it becomes a stacking context
-            // and a containing block for descendants. The on-screen draw is
-            // suppressed separately at paint time.
+            // static, and gains layout + paint containment so it becomes a stacking
+            // context and a containing block for descendants. Layout containment is
+            // required (not just paint) because RenderBox::updateFromStyle() at
+            // RenderBox.cpp:512-540 only translates "effective overflow non-visible"
+            // into the HasNonVisibleOverflow state bit for isRenderBlock() renderers
+            // — RenderReplaced subclasses (RenderSVGRoot, RenderHTMLCanvas as a
+            // nested-canvas direct child) would otherwise never satisfy
+            // RenderBox::requiresLayer(), so they would not get a RenderLayer and
+            // the recording walk at RenderLayer::paintList would skip them. Layout
+            // containment forces requiresLayer() via RenderBox.cpp:5441
+            // (style().usedContain().contains(Layout)) regardless of renderer class.
+            // The on-screen draw is suppressed separately at paint time.
             if (RefPtr parent = element->parentElement(); parent && isLayoutSubtreeCanvas(*parent)) {
                 style.setDisplayMaintainingOriginalDisplay(style.display().blockified());
                 style.setPosition(PositionType::Static);
                 auto contain = style.contain();
-                contain.add({ Style::ContainValue::Paint });
+                contain.add({ Style::ContainValue::Layout, Style::ContainValue::Paint });
                 style.setContain(contain);
             }
         }
