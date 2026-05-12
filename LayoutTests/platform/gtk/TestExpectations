@@ -1463,9 +1463,6 @@ webkit.org/b/313985 fullscreen/fullscreen-clears-hover-on-overlay.html [ Failure
 # waiting on drawElementImage / paint event. Skipped until TB1a+ lands the
 # pieces. Each line will be removed as the corresponding feature slice ships.
 # ===============================================================
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/fullscreen-canvas.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/fullscreen-child-crash.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/fullscreen-crash.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/ink-overflow.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/ink-overflow-worker.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/nested-canvas-invalidation.html [ Skip ]
@@ -1518,24 +1515,23 @@ imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/video-
 # (TB10 / issue #5), which uses requestAnimationFrame instead of requestPaint.
 
 # TB1a follow-ups — RenderText::nodeAtPoint ASSERT_NOT_REACHED in RenderBox's
-# child loop was fixed (Source/WebCore/rendering/RenderBox.cpp). Several tests
-# that crashed in that path now run; the remaining four crashes are unrelated
-# to text hit-testing:
-#   * onpaint-after-scroll{,-2}.html: synthetic scroll via test_driver.Actions
-#     crashes inside the scroll dispatch path itself (separate bug).
-#   * texElementImage2D-12arg-crop-and-scale, texElementImage2D-throws-on-ineligible:
-#     WebGL+canvas-subtree path still hits a different ASSERT downstream.
+# child loop was fixed (Source/WebCore/rendering/RenderBox.cpp). Two scroll
+# tests remain blocked on a test-infra gap:
+#   * onpaint-after-scroll{,-2}.html: test_driver.Actions().scroll() depends on
+#     UIScriptController::sendEventStream, which is notImplemented() on the GTK
+#     test runner (Tools/TestRunnerShared/UIScriptContext/UIScriptController.h
+#     line 98 asserts SHOULD_NEVER_BE_REACHED). Not a canvas/scroll-dispatch bug;
+#     needs synthetic-input plumbing in WebKitTestRunner GTK.
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/onpaint-after-scroll.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/onpaint-after-scroll-2.html [ Skip ]
-fast/canvas/html-in-canvas/texElementImage2D-12arg-crop-and-scale.html [ Skip ]
-fast/canvas/html-in-canvas/texElementImage2D-throws-on-ineligible.html [ Skip ]
-# fullscreen-canvas.html runs but produces a render-tree dump with no baseline
-# (testharness emits no PASS/FAIL because the fullscreen-API path early-exits
-# without firing the test). Needs platform/gtk baseline once we understand it.
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/fullscreen-canvas.html [ Skip ]
+# ANGLE/WebGL flake (GenerateTextureFormatCaps assertion in
+# Source/ThirdParty/ANGLE/.../renderergl_utils.cpp:515) — same pattern as the
+# onpaint-invalidation-crash and texElementImage2D-10arg-source-crop entries.
+fast/canvas/html-in-canvas/texElementImage2D-throws-on-ineligible.html [ Pass Crash ]
 # WebGL/ANGLE flakes — same intermittent crash pattern as the
 # onpaint-invalidation-crash entry above; the WebGL surface init in nested
 # canvas paths sometimes fails when other WebGL tests share the worker.
+fast/canvas/html-in-canvas/texElementImage2D-basic.html [ Pass Crash ]
 fast/canvas/html-in-canvas/texElementImage2D-10arg-source-crop.html [ Pass Crash ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/nested-webgl-layoutsubtree-canvas.html [ Pass Crash ]
 # ANGLE/WebGL flake: GenerateTextureFormatCaps assertion in
