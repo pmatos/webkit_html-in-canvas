@@ -4070,7 +4070,17 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
             recordingInfo.paintBehavior.remove(PaintBehavior::CanvasSubtreeRecord);
             recordingInfo.requireSecurityOriginAccessForWidgets = true;
 
-            childLayer->paintLayer(recorder, recordingInfo, paintFlags);
+            // The WICG html-in-canvas spec requires drawElementImage to record the
+            // un-transformed paint of the direct child; the CSS transform is delivered
+            // separately via the alignment matrix returned by drawElementImage / via
+            // getElementTransform. Set PaintLayerFlag::AppliedTransform so
+            // paintLayerWithEffects (line ~3380) skips paintLayerByApplyingTransform for
+            // this recording walk. Pinned by the imported corpus test
+            // css-transform-on-div.html ("A div with a CSS transform paints without the
+            // transform.").
+            auto recordingFlags = paintFlags | PaintLayerFlag::AppliedTransform;
+
+            childLayer->paintLayer(recorder, recordingInfo, recordingFlags);
 
             auto displayList = recorder.takeDisplayList();
             auto& canvasElement = canvas->canvasElement();
@@ -4088,8 +4098,14 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
             // Stash the recording origin so drawElementImage can subtract it at replay
             // time and land pixels at (dx, dy) regardless of the canvas's document
             // position. localToAbsolute({ borderBox.location() }) returns the same
-            // origin paintLayer applies.
-            FloatPoint recordingOrigin = renderer->localToAbsolute(FloatPoint { borderBox.location() }, { MapCoordinatesMode::UseTransforms });
+            // origin paintLayer applies. TB11: NO MapCoordinatesMode::UseTransforms
+            // here — the recording walk passes PaintLayerFlag::AppliedTransform above,
+            // which skips paintLayerByApplyingTransform, so the recorder's CTM never
+            // factors in the CSS transform. recordingOrigin must match: it would
+            // otherwise carry the transformed absolute position while the actual
+            // recorded pixels live at the un-transformed layout position, producing
+            // misaligned replay (corpus test css-transform-on-div.html).
+            FloatPoint recordingOrigin = renderer->localToAbsolute(FloatPoint { borderBox.location() }, { });
             CanvasChildPaintState state {
                 FloatSize { borderBox.size() },
                 FloatSize { canvasElement.size() },

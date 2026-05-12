@@ -1720,14 +1720,54 @@ ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImageIntern
     if (auto* context = drawingContext()) {
         GraphicsContextStateSaver saver(*context);
         FloatRect destRect { static_cast<float>(dx), static_cast<float>(dy), destSize.width(), destSize.height() };
-        context->clip(destRect);
-        context->translate(static_cast<float>(dx) - record->state().recordingOrigin.x(),
-                           static_cast<float>(dy) - record->state().recordingOrigin.y());
-        if (wantScale && (scaleX != 1.0f || scaleY != 1.0f))
-            context->scale(FloatSize { scaleX, scaleY });
-        if (sourceRect)
-            context->translate(static_cast<float>(-sourceRect->x()), static_cast<float>(-sourceRect->y()));
-        context->drawDisplayList(record->displayList());
+
+        // TB11: when the canvas 2D context has shadow or filter state set, the
+        // recorded display list's per-item SetState items would otherwise clobber
+        // those states during replay (the recorder starts from a clean state at
+        // RenderLayer.cpp recording time, so the recorded items reset shadow to
+        // none). Render the replay into an intermediate ImageBuffer and then
+        // drawImageBuffer back: the single drawImageBuffer op picks up the
+        // canvas's shadow state for the blit, and CanvasFilterContextSwitcher
+        // (constructed earlier) routes that blit through the filter target.
+        // Pinned by corpus tests filtered-basic.html, shadow-basic.html, and
+        // shadow-non-opaque-element.html.
+        auto filterSwitcher = CanvasFilterContextSwitcher::create(*this, destRect);
+        bool needsCompositeBuffer = shouldDrawShadows() || filterSwitcher;
+
+        if (needsCompositeBuffer) {
+            auto buffer = context->createAlignedImageBuffer(destSize);
+            if (buffer) {
+                auto& bufferContext = buffer->context();
+                // Apply the same CTM the direct-replay path would, but with
+                // (dx, dy) = (0, 0) because the buffer is local-coordinate.
+                bufferContext.translate(-record->state().recordingOrigin.x(), -record->state().recordingOrigin.y());
+                if (wantScale && (scaleX != 1.0f || scaleY != 1.0f))
+                    bufferContext.scale(FloatSize { scaleX, scaleY });
+                if (sourceRect)
+                    bufferContext.translate(static_cast<float>(-sourceRect->x()), static_cast<float>(-sourceRect->y()));
+                bufferContext.drawDisplayList(record->displayList());
+
+                auto* targetContext = effectiveDrawingContext();
+                if (targetContext) {
+                    // Single drawImageBuffer applies the canvas's shadow + filter state
+                    // to the composite via Skia/CG drawNativeImage paths that branch on
+                    // hasDropShadow(). The filter case routes through the switcher's
+                    // target buffer; the shadow case adds the drop shadow as part of
+                    // this single blit. Intentionally NO clip(destRect) here — the
+                    // shadow extends outside the destRect (by offsetX/Y + blur radius)
+                    // and must paint into the canvas beyond the destination box.
+                    targetContext->drawImageBuffer(*buffer, destRect);
+                }
+            }
+        } else {
+            context->clip(destRect);
+            context->translate(static_cast<float>(dx) - record->state().recordingOrigin.x(), static_cast<float>(dy) - record->state().recordingOrigin.y());
+            if (wantScale && (scaleX != 1.0f || scaleY != 1.0f))
+                context->scale(FloatSize { scaleX, scaleY });
+            if (sourceRect)
+                context->translate(static_cast<float>(-sourceRect->x()), static_cast<float>(-sourceRect->y()));
+            context->drawDisplayList(record->displayList());
+        }
         didDraw(destRect);
     }
 

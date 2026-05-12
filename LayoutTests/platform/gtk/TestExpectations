@@ -1487,28 +1487,35 @@ imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privac
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/spelling-ignored-fast-path.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/spelling-ignored-overlay-path.html [ Skip ]
 # TB12 follow-up — reftests imported from Chromium now detect correctly after
-# adding -expected.html companions. The 17 below fail the pixel comparison
+# adding -expected.html companions. The entries below fail the pixel comparison
 # against the Chromium-authored reference, exposing real WebKit-vs-Blink
-# rendering gaps in features used by drawElementImage (CSS filters, backdrop-
-# filter, compositing operators, transforms, shadows, animated paint flow,
-# selection rendering, video frame extraction). Tracked in TB11/TB13 follow-up.
+# rendering gaps in features used by drawElementImage (compositing operators,
+# animated paint flow, selection rendering, video frame extraction).
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/compositing-op-basic.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/compositing-op-non-opaque-element.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/css-backdrop-filter-image.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/css-backdrop-filter.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/css-clip-path-on-div.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/css-filter-image.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/css-transform-on-div.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/draw-element-image-scale-variant.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/filtered-basic.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/global-alpha-basic.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/opacity-animation.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/percent-sizing.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/selection-colors-default.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/target-text-ignored-overlay-path.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/shadow-basic.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/shadow-non-opaque-element.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/video-webm.html [ ImageOnlyFailure ]
+
+# TB11 visual-effect fidelity — triaged per-test. Recorder/replay cure landed
+# for CSS transform, canvas-2D filter, and canvas-2D shadow state at
+# Source/WebCore/rendering/RenderLayer.cpp + CanvasRenderingContext2DBase.cpp
+# (see issue #13). The four entries below are remaining red:
+# Bucket R — recorder gap. SVG-URL <feimage> filter chain not captured.
+# Tracking: https://github.com/pmatos/WebKit_HTML-in-canvas/issues/25.
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/css-backdrop-filter-image.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/css-filter-image.html [ ImageOnlyFailure ]
+# Bucket W — WebKit-vs-Blink subpixel antialiasing at primitive borders
+# (backdrop-filter applies correctly; rounded-rect outline differs by 1-2 px).
+# Out of TB11 scope; would need cross-engine font/path-rendering work.
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/css-backdrop-filter.html [ ImageOnlyFailure ]
+# Bucket W — WebKit-vs-Blink subpixel antialiasing at the clip-path circle
+# outline. clip-path applies correctly; antialiasing differs by ~1 px.
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/css-clip-path-on-div.html [ ImageOnlyFailure ]
 
 # The drawElementImage/privacy/*.https.sub.html corpus tests run today as
 # deterministic FAIL baselines (canvas.requestPaint is not a function). They
