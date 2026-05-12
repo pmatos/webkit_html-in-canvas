@@ -1458,29 +1458,42 @@ webkit.org/b/313985 fullscreen/fullscreen-clears-hover-on-overlay.html [ Failure
 
 
 # ===============================================================
-# [canvas] HTML-in-canvas (issue #2 / TB0) — imported drawElementImage corpus
-# Imported from chromium d08251e8b528. Feature unimplemented; tests time out
-# waiting on drawElementImage / paint event. Skipped until TB1a+ lands the
-# pieces. Each line will be removed as the corresponding feature slice ships.
-# ===============================================================
+# [canvas] HTML-in-canvas (issue #14 / TB12 long-tail) — imported corpus skips
+# Imported from chromium d08251e8b528. After TB1a/TB1b/TB5a/TB5b/TB6/TB12 the
+# remaining 18 timeouts fall into four diagnosed buckets:
+#
+# A. devicePixelContentBoxSize (ResizeObserver entry property) — unimplemented
+#    in WebCore. The corpus's util.js:resizeToPixelGrid spins forever waiting
+#    on it, so takeScreenshot() is never reached.
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/ink-overflow.html [ Skip ]
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/scale.html [ Skip ]
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-css-transform-on-div.html [ Skip ]
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-ink-overflow.html [ Skip ]
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-scaling.html [ Skip ]
+# B. OffscreenCanvas + transferControlToOffscreen in DedicatedWorker — TB7
+#    (issue #18). Test bodies live in *.worker.js companions.
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/ink-overflow-worker.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/nested-canvas-invalidation.html [ Skip ]
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/scale-worker.html [ Skip ]
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-ink-overflow-worker.html [ Skip ]
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-scaling-worker.html [ Skip ]
+# C. window.internals testing-only methods (addCompositionMarker, setMarker,
+#    setEditingMarker, etc.) needed to seed editing/spelling/grammar/glic
+#    markers — not exposed on WebKit's internals. Needs a WebKit Internals.idl
+#    extension; not a canvas feature bug.
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/editing-markers-ignored.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/glic-markers-ignored.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/grammar-ignored-overlay-path.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/search-text-painted-overlay-path.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/spelling-ignored-fast-path.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/spelling-ignored-overlay-path.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/scale.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/scale-worker.html [ Skip ]
+# D. Snapshot pipeline gap — RenderLayer's recording walk (TB1b, RenderLayer.cpp
+#    ~line 4047) doesn't emit a CanvasChildPaintRecord for SVG roots or nested
+#    <canvas> children. drawElementImage(svgChild,...) and
+#    drawElementImage(nestedCanvas,...) then throw InvalidStateError "No
+#    snapshot recorded for element." Real TB1b follow-up.
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/nested-canvas-invalidation.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/svg-foreign-object.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/svg-rect.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-css-transform-on-div.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-ink-overflow.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-ink-overflow-worker.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-scaling.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-scaling-worker.html [ Skip ]
 
 # TB12 follow-up — reftests imported from Chromium now detect correctly after
 # adding -expected.html companions. The 17 below fail the pixel comparison
