@@ -89,6 +89,7 @@
 #include "RenderStyle+GettersInlines.h"
 #include "RenderTableCellInlines.h"
 #include "RenderTableCell.h"
+#include "RenderText.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "ResizeObserverSize.h"
@@ -1676,8 +1677,13 @@ bool RenderBox::nodeAtPoint(const HitTestRequest& request, HitTestResult& result
 {
     LayoutPoint adjustedLocation = accumulatedOffset + location();
 
-    // Check kids first.
+    // Check kids first. Skip RenderText children: text is hit-tested through inline
+    // line layout, never directly. Replaced elements normally have no children, but
+    // <canvas layoutsubtree> hosts real layout children including whitespace text
+    // nodes — those would otherwise reach RenderText::nodeAtPoint and assert.
     for (RenderObject* child = lastChild(); child; child = child->previousSibling()) {
+        if (is<RenderText>(*child))
+            continue;
         if (!child->hasLayer() && child->nodeAtPoint(request, result, locationInContainer, adjustedLocation, action)) {
             updateHitTestResult(result, locationInContainer.point() - toLayoutSize(adjustedLocation));
             return true;

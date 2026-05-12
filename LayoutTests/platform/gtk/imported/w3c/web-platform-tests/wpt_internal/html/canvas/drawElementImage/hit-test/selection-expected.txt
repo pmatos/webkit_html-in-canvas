@@ -1,0 +1,4 @@
+hello world
+
+FAIL Double-clicking on canvas should be able to modify selection. assert_equals: #target text should be selected by double-click. expected Text node "hello world" but got null
+

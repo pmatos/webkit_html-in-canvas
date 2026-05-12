@@ -1,0 +1,3 @@
+
+FAIL verify the texElementImage2D works as expected assert_equals: bottom left of bottom left blue expected 255 but got 0
+

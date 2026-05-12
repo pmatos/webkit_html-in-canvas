@@ -1,0 +1,4 @@
+
+PASS Pointer-events: none and inert should be excluded from elementsFromPoint
+PASS CSS transform should be used for hit testing
+
