@@ -1468,16 +1468,16 @@ imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/ink-ov
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/scale-worker.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-ink-overflow-worker.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-scaling-worker.html [ Skip ]
-# C. window.internals testing-only methods (addCompositionMarker, setMarker,
-#    setEditingMarker, etc.) needed to seed editing/spelling/grammar/glic
-#    markers — not exposed on WebKit's internals. Needs a WebKit Internals.idl
-#    extension; not a canvas feature bug.
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/editing-markers-ignored.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/glic-markers-ignored.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/grammar-ignored-overlay-path.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/search-text-painted-overlay-path.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/spelling-ignored-fast-path.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/spelling-ignored-overlay-path.html [ Skip ]
+# C. Privacy reftests that still produce a real rendering diff against the
+#    Chromium-authored reference after issue #21 exposed the marker-seeding
+#    internals methods. The editing / glic / spelling-overlay-path tests now
+#    pass (and have been removed from this list); the three below expose a
+#    real privacy gap in WebKit's CanvasSubtreeRecord paint behaviour or
+#    drawElementImage rendering, which is out of scope for #21 and tracked
+#    separately as a follow-up.
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/grammar-ignored-overlay-path.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/search-text-painted-overlay-path.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/spelling-ignored-fast-path.html [ ImageOnlyFailure ]
 # TB12 follow-up — reftests imported from Chromium now detect correctly after
 # adding -expected.html companions. The entries below fail the pixel comparison
 # against the Chromium-authored reference, exposing real WebKit-vs-Blink

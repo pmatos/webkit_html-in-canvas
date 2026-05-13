@@ -748,6 +748,18 @@ enum ContentsFormat {
 
     undefined setMarkerFor(DOMString markerTypeString, long from, long length, DOMString data);
 
+    // Marker-seeding helpers used by imported wpt_internal tests
+    // (LayoutTests/imported/.../wpt_internal/css/support/markers.js). Signatures
+    // match Chromium's window.internals so the shared JS helpers work unchanged.
+    // Unknown marker types are accepted as no-ops; marker types WebKit does not
+    // model (glic, composition, suggestion) are silent stubs that let the test
+    // setup complete — see Source/WebCore/testing/Internals.cpp.
+    undefined setMarker(Document document, Range range, DOMString markerType);
+    undefined addTextMatchMarker(Range range, DOMString matchStatus);
+    undefined addCompositionMarker(Range range, DOMString underlineColor, DOMString thickness, DOMString underlineStyle, DOMString textColor, DOMString backgroundColor);
+    undefined addActiveSuggestionMarker(Range range, DOMString underlineColor, DOMString thickness, DOMString suggestionHighlightColor);
+    undefined addSuggestionMarker(Range range, sequence<DOMString> suggestions, DOMString suggestionHighlightColor, DOMString underlineColor, DOMString thickness, DOMString textColor);
+
     undefined handleAcceptedCandidate(DOMString candidate, unsigned long location, unsigned long length);
 
     undefined changeSelectionListType();

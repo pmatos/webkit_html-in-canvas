@@ -524,6 +524,12 @@ public:
 
     ExceptionOr<void> setMarkerFor(const String& markerTypeString, int from, int length, const String&);
 
+    ExceptionOr<void> setMarker(Document&, Range&, const String& markerType);
+    ExceptionOr<void> addTextMatchMarker(Range&, const String& matchStatus);
+    void addCompositionMarker(Range&, const String& underlineColor, const String& thickness, const String& underlineStyle, const String& textColor, const String& backgroundColor);
+    void addActiveSuggestionMarker(Range&, const String& underlineColor, const String& thickness, const String& suggestionHighlightColor);
+    void addSuggestionMarker(Range&, const Vector<String>& suggestions, const String& suggestionHighlightColor, const String& underlineColor, const String& thickness, const String& textColor);
+
     void handleAcceptedCandidate(const String& candidate, unsigned location, unsigned length);
     void changeSelectionListType();
     void changeBackToReplacedString(const String& replacedString);

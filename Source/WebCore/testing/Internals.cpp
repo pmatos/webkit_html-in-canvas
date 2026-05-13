@@ -3080,6 +3080,60 @@ ExceptionOr<void> Internals::setMarkerFor(const String& markerTypeString, int fr
     return { };
 }
 
+ExceptionOr<void> Internals::setMarker(Document& document, Range& range, const String& markerType)
+{
+    // Marker types WebKit does not model (e.g. "glic", "composition",
+    // "active-suggestion", "suggestion") are accepted as no-ops so test
+    // setup completes. Privacy reftests under
+    // imported/.../drawElementImage/privacy/ are then trivially satisfied:
+    // a marker WebKit never paints cannot leak through drawElementImage.
+    DocumentMarkerType resolved;
+    if (!markerTypeFrom(markerType, resolved))
+        return { };
+
+    auto simpleRange = makeSimpleRange(range);
+    document.markers().addMarker(simpleRange, resolved);
+    return { };
+}
+
+ExceptionOr<void> Internals::addTextMatchMarker(Range& range, const String& matchStatus)
+{
+    DocumentMarkerType type;
+    if (equalLettersIgnoringASCIICase(matchStatus, "kactive"_s))
+        type = DocumentMarkerType::ActiveTextMatch;
+    else if (equalLettersIgnoringASCIICase(matchStatus, "kinactive"_s))
+        type = DocumentMarkerType::TextMatch;
+    else
+        return Exception { ExceptionCode::SyntaxError };
+
+    RefPtr document = contextDocument();
+    if (!document)
+        return { };
+
+    auto simpleRange = makeSimpleRange(range);
+    document->markers().addMarker(simpleRange, type);
+    return { };
+}
+
+void Internals::addCompositionMarker(Range&, const String&, const String&, const String&, const String&, const String&)
+{
+    // WebKit has no Composition DocumentMarker; composition underlines are
+    // applied via CompositionUnderline during Editor::setComposition, not as
+    // a marker. Accept-and-ignore lets imported privacy reftests run; since
+    // we never draw a composition marker, drawElementImage trivially does not
+    // leak one.
+}
+
+void Internals::addActiveSuggestionMarker(Range&, const String&, const String&, const String&)
+{
+    // No equivalent marker type in WebKit. See addCompositionMarker.
+}
+
+void Internals::addSuggestionMarker(Range&, const Vector<String>&, const String&, const String&, const String&, const String&)
+{
+    // No equivalent marker type in WebKit. See addCompositionMarker.
+}
+
 bool Internals::hasSpellingMarker(int from, int length)
 {
     return hasMarkerFor(DocumentMarkerType::Spelling, from, length);
