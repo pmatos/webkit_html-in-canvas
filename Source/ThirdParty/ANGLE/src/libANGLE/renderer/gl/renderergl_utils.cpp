@@ -746,6 +746,13 @@ void GenerateCaps(const FunctionsGL *functions,
                   gl::Version *maxSupportedESVersion,
                   ShPixelLocalStorageOptions *plsOptions)
 {
+    // Drop any GL errors left in the queue by the shared external context.
+    // EGL_EXTERNAL_CONTEXT_ANGLE adopts an existing host GL context, so the error
+    // queue may already be non-empty when cap initialisation starts. The
+    // per-format probes below assert getError()==GL_NO_ERROR at entry, so a
+    // leaked error from the host would otherwise abort the WebProcess.
+    ANGLE_GL_CLEAR_ERRORS(functions);
+
     // Start by assuming ES3.1 support and work down
     *maxSupportedESVersion = gl::Version(3, 1);
 
