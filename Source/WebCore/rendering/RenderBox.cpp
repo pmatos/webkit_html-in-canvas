@@ -2413,6 +2413,10 @@ LayoutUnit RenderBox::containingBlockLogicalWidthForContent() const
         // canvas.width attribute always sets a definite intrinsic dimension that
         // matches the CSS used width (no CSS width override in the corpus test).
         return canvas->intrinsicSize().width();
+        // (Note: percentage HEIGHT resolution doesn't pass through this function;
+        // it goes through computePercentageLogicalHeightGeneric ->
+        // availableLogicalHeightForPercentageComputation, which is a separate
+        // walk. The percent-sizing height portion of #28 needs a fix there.)
     }
 
     CheckedPtr containingBlock = this->containingBlock();
