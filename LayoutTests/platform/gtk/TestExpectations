@@ -1458,25 +1458,19 @@ webkit.org/b/313985 fullscreen/fullscreen-clears-hover-on-overlay.html [ Failure
 
 
 # ===============================================================
-# [canvas] HTML-in-canvas (issue #14 / TB12 long-tail) — imported corpus skips
-# Imported from chromium d08251e8b528. After TB1a/TB1b/TB5a/TB5b/TB6/TB12 the
-# remaining 18 timeouts fall into four diagnosed buckets:
-#
-# B. OffscreenCanvas + transferControlToOffscreen in DedicatedWorker — re-evaluated
-#    post-TB7 under issue #32. Worker plumbing (TB7/#18) works; two distinct
-#    backend gaps remain:
-#      - 2D worker (ink-overflow-worker, scale-worker): crash with Skia
-#        SingleOwner failure (Source/ThirdParty/skia/src/gpu/ganesh/Device.cpp:358
-#        and GrResourceCache.cpp:314). OffscreenCanvas 2D's Skia GPU surface is
-#        accessed from a thread other than the one that created it. Test bodies
-#        live in *.worker.js companions.
-#      - WebGL worker (webgl-ink-overflow-worker, webgl-scaling-worker): no crash,
-#        but gl.createShader() returns null inside the worker — WebGL/ANGLE is not
-#        creating a context for the offscreen canvas on the worker thread.
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/ink-overflow-worker.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/scale-worker.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-ink-overflow-worker.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-scaling-worker.html [ Skip ]
+# [canvas] HTML-in-canvas (issue #14 / TB12 long-tail) — imported corpus
+# Imported from chromium d08251e8b528. The OffscreenCanvas worker variants
+# (ink-overflow-worker / scale-worker / webgl-ink-overflow-worker /
+# webgl-scaling-worker) used to crash (Skia SingleOwner / ANGLE
+# GenerateTextureFormatCaps). After commits a773113 (force unaccelerated 2D
+# in workers — issue #34) and e9ab785 (enable WEBGL_IN_WORKERS for GTK/WPE
+# — issue #35) the crashes are gone and they run cleanly, but each still
+# diverges from Chromium's reference by ~60-77k px in the worker-side
+# replay path. Tracked under issues #46 / #47 for follow-up render parity.
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/ink-overflow-worker.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/scale-worker.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-ink-overflow-worker.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-scaling-worker.html [ ImageOnlyFailure ]
 # D. Tests whose failure mode changed after this session's recording / sizing
 # fixes. The pre-session baselines captured "InvalidStateError: No snapshot
 # recorded for element" or related assertions; these tests now make it past
@@ -1541,19 +1535,13 @@ imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/css-cl
 # (TB10 / issue #5), which uses requestAnimationFrame instead of requestPaint.
 
 # TB1a follow-ups — RenderText::nodeAtPoint ASSERT_NOT_REACHED in RenderBox's
-# child loop was fixed (Source/WebCore/rendering/RenderBox.cpp). Two scroll
-# tests still blocked, but the blocker has moved:
-#   * onpaint-after-scroll{,-2}.html: UIScriptController::sendEventStream is now
-#     implemented on the GTK runner (issue #23) and the runner no longer crashes.
-#     The tests still time out because scroll_support.js's
-#     waitForScrollEndFallbackToDelayWithoutScrollEvent uses the scrollend
-#     branch whenever window.onscrollend is defined, and GTK does not dispatch
-#     scrollend for non-animated wheel scrolls (the testdriver path uses
-#     hasPreciseScrollingDeltas, which bypasses ScrollAnimationKinetic where
-#     b/306243 wired scrollend on GTK). Re-enable once scrollend dispatch for
-#     non-animated wheels lands.
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/onpaint-after-scroll.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/onpaint-after-scroll-2.html [ Skip ]
+# child loop was fixed (Source/WebCore/rendering/RenderBox.cpp). The
+# onpaint-after-scroll{,-2}.html tests still time out: even after #26 wired
+# scrollend dispatch on the precise-delta wheel path, the testdriver flow
+# doesn't reach the same scrollend trigger. Tracked under issue #48 for
+# follow-up scroll-event work.
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/onpaint-after-scroll.html [ Failure ]
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/onpaint-after-scroll-2.html [ Failure ]
 # ANGLE/WebGL GenerateTextureFormatCaps GL-error-leak crashes are fixed by
 # the ANGLE_GL_CLEAR_ERRORS preclear at the entry of GenerateCaps (#24).
 # 20 consecutive runs of these tests all pass cleanly; restore them to the
