@@ -1462,8 +1462,17 @@ webkit.org/b/313985 fullscreen/fullscreen-clears-hover-on-overlay.html [ Failure
 # Imported from chromium d08251e8b528. After TB1a/TB1b/TB5a/TB5b/TB6/TB12 the
 # remaining 18 timeouts fall into four diagnosed buckets:
 #
-# B. OffscreenCanvas + transferControlToOffscreen in DedicatedWorker — TB7
-#    (issue #18). Test bodies live in *.worker.js companions.
+# B. OffscreenCanvas + transferControlToOffscreen in DedicatedWorker — re-evaluated
+#    post-TB7 under issue #32. Worker plumbing (TB7/#18) works; two distinct
+#    backend gaps remain:
+#      - 2D worker (ink-overflow-worker, scale-worker): crash with Skia
+#        SingleOwner failure (Source/ThirdParty/skia/src/gpu/ganesh/Device.cpp:358
+#        and GrResourceCache.cpp:314). OffscreenCanvas 2D's Skia GPU surface is
+#        accessed from a thread other than the one that created it. Test bodies
+#        live in *.worker.js companions.
+#      - WebGL worker (webgl-ink-overflow-worker, webgl-scaling-worker): no crash,
+#        but gl.createShader() returns null inside the worker — WebGL/ANGLE is not
+#        creating a context for the offscreen canvas on the worker thread.
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/ink-overflow-worker.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/scale-worker.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-ink-overflow-worker.html [ Skip ]
