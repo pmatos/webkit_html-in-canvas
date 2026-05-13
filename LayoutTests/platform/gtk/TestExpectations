@@ -1537,24 +1537,8 @@ imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/css-cl
 #     non-animated wheels lands.
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/onpaint-after-scroll.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/onpaint-after-scroll-2.html [ Skip ]
-# ANGLE/WebGL flake (GenerateTextureFormatCaps assertion in
-# Source/ThirdParty/ANGLE/.../renderergl_utils.cpp:515) — same pattern as the
-# onpaint-invalidation-crash and texElementImage2D-10arg-source-crop entries.
-fast/canvas/html-in-canvas/texElementImage2D-throws-on-ineligible.html [ Pass Crash ]
-# WebGL/ANGLE flakes — same intermittent crash pattern as the
-# onpaint-invalidation-crash entry above; the WebGL surface init in nested
-# canvas paths sometimes fails when other WebGL tests share the worker.
-fast/canvas/html-in-canvas/texElementImage2D-basic.html [ Pass Crash ]
-fast/canvas/html-in-canvas/texElementImage2D-10arg-source-crop.html [ Pass Crash ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/nested-webgl-layoutsubtree-canvas.html [ Pass Crash ]
-# ANGLE/WebGL flake: GenerateTextureFormatCaps assertion in
-# Source/ThirdParty/ANGLE/src/libANGLE/renderer/gl/renderergl_utils.cpp:515
-# fires inconsistently in the WebGL canvas of onpaint-invalidation-crash.html.
-# Independent of TB5b; the JS path through requestPaint+webgl just exposes it.
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/onpaint-invalidation-crash.html [ Skip ]
-# ANGLE/WebGL flake: GenerateTextureFormatCaps assertion (renderergl_utils.cpp:515)
-# fires in the WebGL paths of the bucket-A drawElementImage tests that were
-# unskipped once devicePixelContentBoxSize landed. Crash is unrelated to canvas
-# layoutsubtree work — same root cause as the entries above.
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-ink-overflow.html [ Pass Crash ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-scaling.html [ Pass Crash ]
+# ANGLE/WebGL GenerateTextureFormatCaps GL-error-leak crashes are fixed by
+# the ANGLE_GL_CLEAR_ERRORS preclear at the entry of GenerateCaps (#24).
+# 20 consecutive runs of these tests all pass cleanly; restore them to the
+# default Pass expectation and re-skip-list only if the underlying flake
+# resurfaces.
