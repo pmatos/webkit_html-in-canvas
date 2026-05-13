@@ -1497,8 +1497,8 @@ imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privac
 # webgl-ink-overflow and webgl-scaling previously crashed (Pass Crash); now they
 # run cleanly after #24 ANGLE fix but produce text-output baseline mismatches
 # vs the pixel-test expectations the upstream tests document.
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-ink-overflow.html [ Missing ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-scaling.html [ Missing ]
+
+
 # C. Privacy reftests that still produce a real rendering diff against the
 #    Chromium-authored reference. The CanvasSubtreeRecording bit (added under
 #    issue #29/#31) suppresses spelling, grammar, and target-text overlays
