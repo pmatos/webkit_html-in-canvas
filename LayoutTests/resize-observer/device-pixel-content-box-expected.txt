@@ -1,0 +1,4 @@
+
+PASS devicePixelContentBoxSize on integer-sized box reflects width/height scaled by devicePixelRatio
+PASS observer with box: device-pixel-content-box fires on initial observe
+

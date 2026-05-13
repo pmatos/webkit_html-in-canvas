@@ -1,0 +1,33 @@
+<!doctype html>
+<title>ResizeObserverEntry.devicePixelContentBoxSize</title>
+<script src="../resources/testharness.js"></script>
+<script src="../resources/testharnessreport.js"></script>
+<style>
+  #target, #fire-target { width: 100px; height: 50px; padding: 0; margin: 0; box-sizing: content-box; }
+</style>
+<div id="target"></div>
+<div id="fire-target"></div>
+<script>
+async_test(t => {
+  const target = document.getElementById('target');
+  const dpr = window.devicePixelRatio;
+  new ResizeObserver(t.step_func_done(entries => {
+    assert_equals(entries.length, 1, 'one entry');
+    const dpcb = entries[0].devicePixelContentBoxSize;
+    assert_equals(dpcb.length, 1, 'single ResizeObserverSize in array');
+    assert_equals(dpcb[0].inlineSize, Math.round(100 * dpr), 'inlineSize matches width scaled by dpr');
+    assert_equals(dpcb[0].blockSize, Math.round(50 * dpr), 'blockSize matches height scaled by dpr');
+  })).observe(target);
+}, 'devicePixelContentBoxSize on integer-sized box reflects width/height scaled by devicePixelRatio');
+
+async_test(t => {
+  const target = document.getElementById('fire-target');
+  new ResizeObserver(t.step_func_done(entries => {
+    assert_equals(entries.length, 1);
+    assert_equals(entries[0].target, target);
+    const dpcb = entries[0].devicePixelContentBoxSize[0];
+    assert_greater_than(dpcb.inlineSize, 0, 'inlineSize populated');
+    assert_greater_than(dpcb.blockSize, 0, 'blockSize populated');
+  })).observe(target, { box: 'device-pixel-content-box' });
+}, 'observer with box: device-pixel-content-box fires on initial observe');
+</script>

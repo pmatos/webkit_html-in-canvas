@@ -1462,14 +1462,6 @@ webkit.org/b/313985 fullscreen/fullscreen-clears-hover-on-overlay.html [ Failure
 # Imported from chromium d08251e8b528. After TB1a/TB1b/TB5a/TB5b/TB6/TB12 the
 # remaining 18 timeouts fall into four diagnosed buckets:
 #
-# A. devicePixelContentBoxSize (ResizeObserver entry property) — unimplemented
-#    in WebCore. The corpus's util.js:resizeToPixelGrid spins forever waiting
-#    on it, so takeScreenshot() is never reached.
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/ink-overflow.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/scale.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-css-transform-on-div.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-ink-overflow.html [ Skip ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-scaling.html [ Skip ]
 # B. OffscreenCanvas + transferControlToOffscreen in DedicatedWorker — TB7
 #    (issue #18). Test bodies live in *.worker.js companions.
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/ink-overflow-worker.html [ Skip ]
@@ -1550,3 +1542,9 @@ imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/nested
 # fires inconsistently in the WebGL canvas of onpaint-invalidation-crash.html.
 # Independent of TB5b; the JS path through requestPaint+webgl just exposes it.
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/onpaint-invalidation-crash.html [ Skip ]
+# ANGLE/WebGL flake: GenerateTextureFormatCaps assertion (renderergl_utils.cpp:515)
+# fires in the WebGL paths of the bucket-A drawElementImage tests that were
+# unskipped once devicePixelContentBoxSize landed. Crash is unrelated to canvas
+# layoutsubtree work — same root cause as the entries above.
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-ink-overflow.html [ Pass Crash ]
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-scaling.html [ Pass Crash ]

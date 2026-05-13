@@ -27,10 +27,13 @@
 #include "ResizeObservation.h"
 
 #include "ElementInlines.h"
+#include "FloatSize.h"
 #include "HTMLFrameOwnerElement.h"
+#include "LayoutPoint.h"
 #include "Logging.h"
 #include "RenderBoxInlines.h"
 #include "RenderElementStyleInlines.h"
+#include "RenderObjectEnums.h"
 #include "SVGElement.h"
 #include "StyleZoomPrimitivesInlines.h"
 #include <wtf/TZoneMallocInlines.h>
@@ -46,7 +49,7 @@ WTF_MAKE_TZONE_ALLOCATED_IMPL(ResizeObservation);
 
 ResizeObservation::ResizeObservation(Element& element, ResizeObserverBoxOptions observedBox)
     : m_target { element }
-    , m_lastObservationSizes { LayoutSize(-1, -1), LayoutSize(-1, -1), LayoutSize(-1, -1) }
+    , m_lastObservationSizes { LayoutSize(-1, -1), LayoutSize(-1, -1), LayoutSize(-1, -1), LayoutSize(-1, -1) }
     , m_observedBox { observedBox }
 {
 }
@@ -60,7 +63,7 @@ void ResizeObservation::updateObservationSize(const BoxSizes& boxSizes)
 
 void ResizeObservation::resetObservationSize()
 {
-    m_lastObservationSizes = { LayoutSize(-1, -1), LayoutSize(-1, -1), LayoutSize(-1, -1) };
+    m_lastObservationSizes = { LayoutSize(-1, -1), LayoutSize(-1, -1), LayoutSize(-1, -1), LayoutSize(-1, -1) };
 }
 
 auto ResizeObservation::computeObservedSizes() const -> std::optional<BoxSizes>
@@ -72,7 +75,10 @@ auto ResizeObservation::computeObservedSizes() const -> std::optional<BoxSizes>
                 size.setWidth(svgRect->width());
                 size.setHeight(svgRect->height());
             }
-            return { { size, size, size } };
+            LayoutSize devicePixelSize = size;
+            if (CheckedPtr renderer = svg->renderer())
+                devicePixelSize.scale(renderer->style().usedZoom() * svg->document().deviceScaleFactor());
+            return { { size, size, size, devicePixelSize } };
         }
     }
 
@@ -80,11 +86,23 @@ auto ResizeObservation::computeObservedSizes() const -> std::optional<BoxSizes>
     if (box) {
         if (box->isSkippedContent())
             return std::nullopt;
-        return { {
-            Style::adjustLayoutSizeForAbsoluteZoom(box->contentBoxSize(), *box),
-            Style::adjustLayoutSizeForAbsoluteZoom(box->contentBoxLogicalSize(), *box),
-            Style::adjustLayoutSizeForAbsoluteZoom(box->borderBoxLogicalSize(), *box)
-        } };
+        auto contentBoxSizeRender = box->contentBoxSize();
+        auto logicalContent = Style::adjustLayoutSizeForAbsoluteZoom(box->contentBoxLogicalSize(), *box);
+        auto logicalBorder = Style::adjustLayoutSizeForAbsoluteZoom(box->borderBoxLogicalSize(), *box);
+
+        // https://w3c.github.io/csswg-drafts/resize-observer/#calculate-depx-content-size
+        // Snap the render-pixel content box in absolute (transformed) coordinates to device pixels,
+        // then rotate to logical axes for vertical writing modes. contentBoxSize() is already
+        // zoom-applied, so do not divide it by usedZoom here.
+        auto absoluteContentBoxOrigin = box->localToAbsolute(FloatPoint(box->contentBoxRect().location()), MapCoordinatesMode::UseTransforms);
+        float deviceScaleFactor = m_target->document().deviceScaleFactor();
+        auto physicalSnapped = snapSizeToDevicePixel(contentBoxSizeRender, LayoutPoint(absoluteContentBoxOrigin), deviceScaleFactor);
+        auto devicePixelLogical = box->isHorizontalWritingMode()
+            ? LayoutSize(physicalSnapped)
+            : LayoutSize(physicalSnapped.transposedSize());
+
+        auto physicalContentCSS = Style::adjustLayoutSizeForAbsoluteZoom(contentBoxSizeRender, *box);
+        return { { physicalContentCSS, logicalContent, logicalBorder, devicePixelLogical } };
     }
 
     return BoxSizes { };
@@ -118,9 +136,9 @@ FloatSize ResizeObservation::contentBoxSize() const
     return m_lastObservationSizes.contentBoxLogicalSize;
 }
 
-FloatSize ResizeObservation::snappedContentBoxSize() const
+FloatSize ResizeObservation::devicePixelContentBoxSize() const
 {
-    return m_lastObservationSizes.contentBoxLogicalSize; // FIXME: Need to pixel snap.
+    return m_lastObservationSizes.devicePixelContentBoxLogicalSize;
 }
 
 std::optional<ResizeObservation::BoxSizes> ResizeObservation::elementSizeChanged() const
@@ -139,6 +157,12 @@ std::optional<ResizeObservation::BoxSizes> ResizeObservation::elementSizeChanged
     case ResizeObserverBoxOptions::ContentBox:
         if (m_lastObservationSizes.contentBoxLogicalSize != currentSizes->contentBoxLogicalSize) {
             LOG_WITH_STREAM(ResizeObserver, stream << "ResizeObservation " << *this << " elementSizeChanged - content box size changed from " << m_lastObservationSizes.contentBoxLogicalSize << " to " << currentSizes->contentBoxLogicalSize);
+            return currentSizes;
+        }
+        break;
+    case ResizeObserverBoxOptions::DevicePixelContentBox:
+        if (m_lastObservationSizes.devicePixelContentBoxLogicalSize != currentSizes->devicePixelContentBoxLogicalSize) {
+            LOG_WITH_STREAM(ResizeObserver, stream << "ResizeObservation " << *this << " elementSizeChanged - device pixel content box size changed from " << m_lastObservationSizes.devicePixelContentBoxLogicalSize << " to " << currentSizes->devicePixelContentBoxLogicalSize);
             return currentSizes;
         }
         break;
@@ -168,7 +192,7 @@ TextStream& operator<<(TextStream& ts, const ResizeObservation& observation)
 
     ts.dumpProperty("border box"_s, observation.borderBoxSize());
     ts.dumpProperty("content box"_s, observation.contentBoxSize());
-    ts.dumpProperty("snapped content box"_s, observation.snappedContentBoxSize());
+    ts.dumpProperty("device pixel content box"_s, observation.devicePixelContentBoxSize());
     return ts;
 }
 

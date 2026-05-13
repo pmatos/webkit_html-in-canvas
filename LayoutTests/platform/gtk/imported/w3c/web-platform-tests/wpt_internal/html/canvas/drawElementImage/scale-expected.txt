@@ -1,0 +1,61 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x528
+  RenderBlock {HTML} at (0,0) size 800x528
+    RenderGrid {BODY} at (8,8) size 784x512
+layer at (8,8) size 256x256
+  RenderHTMLCanvas {CANVAS} at (0,0) size 256x256
+    RenderText {#text} at (0,0) size 0x0
+layer at (8,8) size 60x62
+  RenderBlock {DIV} at (0,0) size 60x63 [bgcolor=#FFFFFF]
+layer at (8,8) size 60x62 clip at (9,9) size 58x60
+  RenderBlock {DIV} at (0,0) size 60x63 [border: (1px solid #000000)]
+    RenderInline (generated) at (4,4) size 84x54
+      RenderText at (4,4) size 84x54
+        text run at (4,4) width 35: "CSS"
+        text run at (4,22) width 16: "IS"
+        text run at (4,40) width 84: "AWESOME"
+layer at (269,8) size 256x256
+  RenderHTMLCanvas {CANVAS} at (261,0) size 257x256
+    RenderText {#text} at (0,0) size 0x0
+layer at (269,8) size 100x100
+  RenderBlock {DIV} at (0,0) size 100x100 [bgcolor=#FFFFFF]
+    RenderBlock {COLOR-GRID} at (0,0) size 100x100
+      RenderGrid {DIV} at (0,0) size 100x100
+        RenderBlock {DIV} at (0,0) size 50x50 [bgcolor=#FF0000]
+        RenderBlock {DIV} at (50,0) size 50x50 [bgcolor=#008000]
+        RenderBlock {DIV} at (0,50) size 50x50 [bgcolor=#2020FF]
+        RenderBlock {DIV} at (50,50) size 50x50 [bgcolor=#E0E000]
+layer at (531,8) size 256x256
+  RenderHTMLCanvas {CANVAS} at (522,0) size 257x256
+    RenderText {#text} at (0,0) size 0x0
+layer at (531,8) size 100x100
+  RenderBlock {DIV} at (0,0) size 100x100 [bgcolor=#FFFFFF]
+    RenderBlock {COLOR-GRID} at (0,0) size 100x100
+      RenderGrid {DIV} at (0,0) size 100x100
+        RenderBlock {DIV} at (0,0) size 50x50 [bgcolor=#FF0000]
+        RenderBlock {DIV} at (50,0) size 50x50 [bgcolor=#008000]
+        RenderBlock {DIV} at (0,50) size 50x50 [bgcolor=#2020FF]
+        RenderBlock {DIV} at (50,50) size 50x50 [bgcolor=#E0E000]
+layer at (8,264) size 256x256
+  RenderHTMLCanvas {CANVAS} at (0,256) size 256x256
+    RenderText {#text} at (0,0) size 0x0
+layer at (8,264) size 100x100
+  RenderBlock {DIV} at (0,0) size 100x100 [bgcolor=#FFFFFF]
+    RenderBlock {COLOR-GRID} at (0,0) size 100x100
+      RenderGrid {DIV} at (0,0) size 100x100
+        RenderBlock {DIV} at (0,0) size 50x50 [bgcolor=#FF0000]
+        RenderBlock {DIV} at (50,0) size 50x50 [bgcolor=#008000]
+        RenderBlock {DIV} at (0,50) size 50x50 [bgcolor=#2020FF]
+        RenderBlock {DIV} at (50,50) size 50x50 [bgcolor=#E0E000]
+layer at (269,264) size 256x256
+  RenderHTMLCanvas {CANVAS} at (261,256) size 257x256
+    RenderText {#text} at (0,0) size 0x0
+layer at (269,264) size 100x100
+  RenderBlock {DIV} at (0,0) size 100x100 [bgcolor=#FFFFFF]
+    RenderBlock {COLOR-GRID} at (0,0) size 100x100
+      RenderGrid {DIV} at (0,0) size 100x100
+        RenderBlock {DIV} at (0,0) size 50x50 [bgcolor=#FF0000]
+        RenderBlock {DIV} at (50,0) size 50x50 [bgcolor=#008000]
+        RenderBlock {DIV} at (0,50) size 50x50 [bgcolor=#2020FF]
+        RenderBlock {DIV} at (50,50) size 50x50 [bgcolor=#E0E000]

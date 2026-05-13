@@ -1,3 +1,3 @@
 
-FAIL ResizeObserver sizes account for zoom promise_test: Unhandled rejection with value: object "TypeError: undefined is not an object (evaluating 'sizeArray.length')"
+FAIL ResizeObserver sizes account for zoom assert_equals: content-rect top should be scaled by zoom expected 5 but got 10
 
