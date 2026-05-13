@@ -17,7 +17,8 @@
  */
 
 [
-    Exposed=Window,
+    Exposed=(Window,Worker),
+    Transferable,
     EnabledBySetting=CanvasDrawElementEnabled,
 ] interface ElementImage {
     readonly attribute double width;

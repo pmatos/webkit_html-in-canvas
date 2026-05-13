@@ -4106,12 +4106,26 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
             // recorded pixels live at the un-transformed layout position, producing
             // misaligned replay (corpus test css-transform-on-div.html).
             FloatPoint recordingOrigin = renderer->localToAbsolute(FloatPoint { borderBox.location() }, { });
+            // TB7: capture the source canvas's unzoomed CSS dimensions so that an
+            // OffscreenCanvas receiver (no live renderBox on the worker side) can
+            // compute cssToGridScale = receiverCanvas.size() / sourceUnzoomedCSSSize.
+            FloatSize sourceUnzoomedCSSSize;
+            if (CheckedPtr canvasRenderer = canvasElement.renderBox()) {
+                float canvasZoom = canvasRenderer->style().usedZoom();
+                if (canvasZoom > 0) {
+                    sourceUnzoomedCSSSize = {
+                        canvasRenderer->size().width() / canvasZoom,
+                        canvasRenderer->size().height() / canvasZoom,
+                    };
+                }
+            }
             CanvasChildPaintState state {
                 FloatSize { borderBox.size() },
                 FloatSize { canvasElement.size() },
                 childZoom,
                 transformOrigin,
                 recordingOrigin,
+                sourceUnzoomedCSSSize,
             };
             canvasElement.setCanvasChildPaintRecord(
                 *element,

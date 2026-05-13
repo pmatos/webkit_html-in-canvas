@@ -1,0 +1,42 @@
+<!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
+<title>TB7: ElementImage detaches on postMessage transfer</title>
+<script src="../../../resources/testharness.js"></script>
+<script src="../../../resources/testharnessreport.js"></script>
+<canvas id="cv" width="100" height="100" layoutsubtree>
+  <div id="child" style="width:50px;height:50px;background:red"></div>
+</canvas>
+<script>
+'use strict';
+
+function waitForCanvasPaint(canvas) {
+  return new Promise(resolve => {
+    canvas.addEventListener('paint', resolve, {once: true});
+    canvas.requestPaint();
+  });
+}
+
+promise_test(async t => {
+  await waitForCanvasPaint(cv);
+  const ei = cv.captureElementImage(child);
+  assert_equals(ei.width, 50, 'width before transfer');
+  assert_equals(ei.height, 50, 'height before transfer');
+  assert_false(ei.isClosed === false, 'no isClosed prop exposed');
+
+  const worker = new Worker(URL.createObjectURL(new Blob([
+    'self.onmessage = e => self.postMessage({w: e.data.image.width});'
+  ], {type: 'application/javascript'})));
+
+  const ack = new Promise(resolve => worker.onmessage = e => resolve(e.data));
+  worker.postMessage({ image: ei }, [ei]);
+
+  assert_equals(ei.width, 0, 'source-side width zeros after transfer');
+  assert_equals(ei.height, 0, 'source-side height zeros after transfer');
+
+  const ctx = cv.getContext('2d');
+  assert_throws_dom('InvalidStateError', () => ctx.drawElementImage(ei, 0, 0),
+    'drawElementImage on detached source ElementImage throws');
+
+  const replyW = (await ack).w;
+  assert_equals(replyW, 50, 'receiver-side width survives transfer');
+}, 'ElementImage detaches on postMessage transfer (source.width = 0, draw throws)');
+</script>

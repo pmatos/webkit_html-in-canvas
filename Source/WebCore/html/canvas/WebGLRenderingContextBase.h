@@ -99,6 +99,7 @@ class EXTTextureFilterAnisotropic;
 class EXTTextureMirrorClampToEdge;
 class EXTTextureNorm16;
 class Element;
+class ElementImage;
 class FloatRect;
 class HTMLImageElement;
 class ImageData;
@@ -347,8 +348,14 @@ public:
     ExceptionOr<void> texElementImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, float sx, float sy, float swidth, float sheight, GCGLenum format, GCGLenum type, Element&);
     ExceptionOr<void> texElementImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, float sx, float sy, float swidth, float sheight, GCGLsizei width, GCGLsizei height, GCGLenum format, GCGLenum type, Element&);
 
+    ExceptionOr<void> texElementImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, GCGLenum format, GCGLenum type, ElementImage&);
+    ExceptionOr<void> texElementImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, GCGLsizei width, GCGLsizei height, GCGLenum format, GCGLenum type, ElementImage&);
+    ExceptionOr<void> texElementImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, float sx, float sy, float swidth, float sheight, GCGLenum format, GCGLenum type, ElementImage&);
+    ExceptionOr<void> texElementImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, float sx, float sy, float swidth, float sheight, GCGLsizei width, GCGLsizei height, GCGLenum format, GCGLenum type, ElementImage&);
+
 private:
     ExceptionOr<void> texElementImageImpl(GCGLenum target, GCGLint level, GCGLenum internalformat, std::optional<FloatRect> sourceRect, std::optional<IntSize> explicitDestSize, GCGLenum format, GCGLenum type, Element&);
+    ExceptionOr<void> texElementImageImpl(GCGLenum target, GCGLint level, GCGLenum internalformat, std::optional<FloatRect> sourceRect, std::optional<IntSize> explicitDestSize, GCGLenum format, GCGLenum type, ElementImage&);
 public:
 
     template<typename TypedArray, typename DataType>

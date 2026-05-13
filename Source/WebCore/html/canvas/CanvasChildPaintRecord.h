@@ -27,8 +27,10 @@
 
 #include "FloatPoint.h"
 #include "FloatSize.h"
+#include "NativeImage.h"
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
+#include <wtf/RefPtr.h>
 #include <wtf/TZoneMalloc.h>
 
 namespace WebCore {
@@ -52,6 +54,12 @@ struct CanvasChildPaintState {
     // canvas's document position. Captured as borderBox.location() expressed in
     // recording-space (the canvas's absolute origin + the child's local borderBox.x/y).
     FloatPoint recordingOrigin;
+    // TB7: source canvas's renderBox()->size() / usedZoom() at recording time —
+    // i.e. the unzoomed CSS px dimensions of the source canvas. Captured here so the
+    // alignment-matrix path on an OffscreenCanvas receiver (worker side, no live
+    // renderBox available) can still compute cssToGridScale as
+    // receiverCanvas.size() / sourceUnzoomedCSSSize.
+    FloatSize sourceUnzoomedCSSSize;
 };
 
 // Snapshot of one direct child of a <canvas layoutsubtree>: a recorded display list plus
@@ -70,17 +78,25 @@ class CanvasChildPaintRecord : public RefCounted<CanvasChildPaintRecord> {
 public:
     static Ref<CanvasChildPaintRecord> create(Ref<const DisplayList::DisplayList>&& displayList, CanvasChildPaintState state)
     {
-        return adoptRef(*new CanvasChildPaintRecord(WTF::move(displayList), state));
+        return adoptRef(*new CanvasChildPaintRecord(WTF::move(displayList), nullptr, state));
     }
+    // TB7: rasterized form used when an ElementImage is reconstructed on the
+    // receiving side of a postMessage transfer. The DisplayList is still kept
+    // (a single-item DrawNativeImage list) so callers that walk the list see
+    // the same shape, but replay paths prefer rasterizedImage() to avoid the
+    // main-thread-only ControlFactory inside GraphicsContext::drawDisplayList.
+    WEBCORE_EXPORT static Ref<CanvasChildPaintRecord> createFromRasterized(Ref<const DisplayList::DisplayList>&&, Ref<NativeImage>&&, CanvasChildPaintState);
     ~CanvasChildPaintRecord();
 
     const DisplayList::DisplayList& displayList() const { return m_displayList.get(); }
+    NativeImage* rasterizedImage() const { return m_rasterizedImage.get(); }
     const CanvasChildPaintState& state() const { return m_state; }
 
 private:
-    CanvasChildPaintRecord(Ref<const DisplayList::DisplayList>&&, CanvasChildPaintState);
+    CanvasChildPaintRecord(Ref<const DisplayList::DisplayList>&&, RefPtr<NativeImage>&&, CanvasChildPaintState);
 
     Ref<const DisplayList::DisplayList> m_displayList;
+    RefPtr<NativeImage> m_rasterizedImage;
     CanvasChildPaintState m_state;
 };
 

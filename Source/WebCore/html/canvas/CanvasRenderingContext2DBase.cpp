@@ -63,6 +63,7 @@
 #include "GraphicsClient.h"
 #include "CanvasChildPaintRecord.h"
 #include "ElementImage.h"
+#include "DrawElementImageMath.h"
 #include "HTMLCanvasElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLVideoElement.h"
@@ -1789,39 +1790,123 @@ ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImageIntern
 
 ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImage(ElementImage& elementImage, double dx, double dy)
 {
-    // TB6: ElementImage-source overload. The captured snapshot already fixes the
-    // source's geometry at capture time, so we don't reach back into the canvas's
-    // live record map (and an ElementImage from canvasA can be drawn into canvasB).
+    return drawElementImageInternal(elementImage, std::nullopt, dx, dy, std::nullopt);
+}
+
+ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImage(ElementImage& elementImage, double dx, double dy, double dwidth, double dheight)
+{
+    return drawElementImageInternal(elementImage, std::nullopt, dx, dy, FloatSize { static_cast<float>(dwidth), static_cast<float>(dheight) });
+}
+
+ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImage(ElementImage& elementImage, double sx, double sy, double sw, double sh, double dx, double dy)
+{
+    FloatRect sourceRect { static_cast<float>(sx), static_cast<float>(sy), static_cast<float>(sw), static_cast<float>(sh) };
+    return drawElementImageInternal(elementImage, sourceRect, dx, dy, std::nullopt);
+}
+
+ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImage(ElementImage& elementImage, double sx, double sy, double sw, double sh, double dx, double dy, double dwidth, double dheight)
+{
+    FloatRect sourceRect { static_cast<float>(sx), static_cast<float>(sy), static_cast<float>(sw), static_cast<float>(sh) };
+    return drawElementImageInternal(elementImage, sourceRect, dx, dy, FloatSize { static_cast<float>(dwidth), static_cast<float>(dheight) });
+}
+
+ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImageInternal(ElementImage& elementImage, std::optional<FloatRect> sourceRect, double dx, double dy, std::optional<FloatSize> explicitDestSize)
+{
+    // ElementImage-source overload. Works on both HTMLCanvasElement-backed and
+    // OffscreenCanvas-backed contexts — the receiver only needs a GraphicsContext
+    // via drawingContext(). The captured snapshot already fixes the source's
+    // geometry at capture time, so we don't reach back into the canvas's live
+    // record map (and an ElementImage from canvasA can be drawn into canvasB).
     if (elementImage.isClosed())
         return Exception { ExceptionCode::InvalidStateError, "A closed ElementImage cannot be drawn."_s };
 
-    RefPtr canvasElement = dynamicDowncast<HTMLCanvasElement>(canvasBase());
-    if (!canvasElement)
-        return Exception { ExceptionCode::InvalidStateError, "drawElementImage requires an HTMLCanvasElement context"_s };
-
     auto* record = elementImage.record();
-    ASSERT(record); // !isClosed() guaranteed it.
+    ASSERT(record);
 
+    constexpr float kMinExtent = 8.0f * std::numeric_limits<float>::epsilon();
     if (!std::isfinite(dx) || !std::isfinite(dy))
         return DOMMatrix::create(TransformationMatrix { }, DOMMatrixReadOnly::Is2D::Yes);
+    if (explicitDestSize) {
+        if (!std::isfinite(explicitDestSize->width()) || !std::isfinite(explicitDestSize->height()))
+            return DOMMatrix::create(TransformationMatrix { }, DOMMatrixReadOnly::Is2D::Yes);
+        if (explicitDestSize->width() < kMinExtent || explicitDestSize->height() < kMinExtent)
+            return DOMMatrix::create(TransformationMatrix { }, DOMMatrixReadOnly::Is2D::Yes);
+    }
+    if (sourceRect) {
+        if (!std::isfinite(sourceRect->x()) || !std::isfinite(sourceRect->y())
+            || !std::isfinite(sourceRect->width()) || !std::isfinite(sourceRect->height()))
+            return DOMMatrix::create(TransformationMatrix { }, DOMMatrixReadOnly::Is2D::Yes);
+        if (sourceRect->width() < kMinExtent || sourceRect->height() < kMinExtent)
+            return DOMMatrix::create(TransformationMatrix { }, DOMMatrixReadOnly::Is2D::Yes);
+    }
 
     auto& recordState = record->state();
     auto& boxSize = recordState.boxSize;
+    FloatSize destSize;
+    if (explicitDestSize)
+        destSize = *explicitDestSize;
+    else if (sourceRect)
+        destSize = sourceRect->size();
+    else
+        destSize = boxSize;
+
+    FloatSize replaySrcSize = sourceRect ? sourceRect->size() : boxSize;
+    bool wantScale = (sourceRect || explicitDestSize) && replaySrcSize.width() > 0 && replaySrcSize.height() > 0;
+    float scaleX = wantScale ? destSize.width() / replaySrcSize.width() : 1.0f;
+    float scaleY = wantScale ? destSize.height() / replaySrcSize.height() : 1.0f;
+
     if (auto* context = drawingContext()) {
         GraphicsContextStateSaver saver(*context);
-        FloatRect destRect { static_cast<float>(dx), static_cast<float>(dy), boxSize.width(), boxSize.height() };
+        FloatRect destRect { static_cast<float>(dx), static_cast<float>(dy), destSize.width(), destSize.height() };
         context->clip(destRect);
         // Translate so the recording's origin (the child's absolute borderBox.location())
         // lands at (dx, dy). TB6 stores recordingOrigin in state for this purpose.
         context->translate(static_cast<float>(dx) - recordState.recordingOrigin.x(),
                            static_cast<float>(dy) - recordState.recordingOrigin.y());
-        context->drawDisplayList(record->displayList());
+        if (wantScale && (scaleX != 1.0f || scaleY != 1.0f))
+            context->scale(FloatSize { scaleX, scaleY });
+        if (sourceRect)
+            context->translate(static_cast<float>(-sourceRect->x()), static_cast<float>(-sourceRect->y()));
+        if (RefPtr rasterized = record->rasterizedImage()) {
+            // TB7: a transferred-and-reconstructed ElementImage carries pre-rasterized pixels.
+            // Paint them directly — GraphicsContext::drawDisplayList unconditionally calls
+            // ControlFactory::singleton() which is main-thread-only and would crash on a
+            // worker-backed OffscreenCanvasRenderingContext2D.
+            FloatRect imageRect { FloatPoint { }, FloatSize { rasterized->size() } };
+            context->drawNativeImage(*rasterized, imageRect, imageRect);
+        } else
+            context->drawDisplayList(record->displayList());
         didDraw(destRect);
     }
 
     AffineTransform drawTransform = state().transform;
     drawTransform.translate(dx, dy);
-    auto matrix = canvasElement->computeAlignmentMatrixForChild(*record, drawTransform);
+    if (wantScale && (scaleX != 1.0f || scaleY != 1.0f))
+        drawTransform.scaleNonUniform(scaleX, scaleY);
+    if (sourceRect)
+        drawTransform.translate(-sourceRect->x(), -sourceRect->y());
+    TransformationMatrix matrix;
+    if (RefPtr canvasElement = dynamicDowncast<HTMLCanvasElement>(canvasBase()))
+        matrix = canvasElement->computeAlignmentMatrixForChild(*record, drawTransform);
+    else {
+        // OffscreenCanvas receiver: no live renderBox. cssToGridScale derives from the
+        // OC's grid dimensions and the source canvas's unzoomedCSSSize captured at
+        // recording time (TB7).
+        auto& base = canvasBase();
+        FloatSize cssToGridScale { 1, 1 };
+        auto sourceCSS = recordState.sourceUnzoomedCSSSize;
+        if (sourceCSS.width() > 0 && sourceCSS.height() > 0) {
+            cssToGridScale = {
+                static_cast<float>(base.size().width()) / sourceCSS.width(),
+                static_cast<float>(base.size().height()) / sourceCSS.height(),
+            };
+        }
+        matrix = computeDrawElementAlignmentMatrix({
+            recordState.transformOrigin,
+            cssToGridScale,
+            drawTransform,
+        });
+    }
     return DOMMatrix::create(WTF::move(matrix), DOMMatrixReadOnly::Is2D::Yes);
 }
 

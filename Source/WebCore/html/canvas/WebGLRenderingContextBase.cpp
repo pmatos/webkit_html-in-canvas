@@ -32,6 +32,7 @@
 #include "BitmapImage.h"
 #include "CachedImage.h"
 #include "CanvasChildPaintRecord.h"
+#include "ElementImage.h"
 #include "Chrome.h"
 #include "ContextDestructionObserverInlines.h"
 #include "ContainerNodeInlines.h"
@@ -4212,6 +4213,61 @@ ExceptionOr<void> WebGLRenderingContextBase::texElementImageImpl(GCGLenum target
     if (!validateTexFunc(TexImageFunctionID::TexImage2D, SourceHTMLCanvasElement, target, level, internalformat, destSize.width(), destSize.height(), 1, 0, format, type, 0, 0, 0))
         return { };
 
+    RefPtr<Image> image = rasterizeCanvasChildPaintRecord(*record, effectiveSourceRect, destSize);
+    if (!image)
+        return { };
+
+    texImageImpl(TexImageFunctionID::TexImage2D, target, level, internalformat, 0, 0, 0, format, type, *image, GraphicsContextGL::DOMSource::Canvas, m_unpackFlipY, m_unpackPremultiplyAlpha, /*ignoreNativeImageAlphaPremultiplication*/ false, sentinelEmptyRect(), /*depth*/ 1, /*unpackImageHeight*/ 0);
+    return { };
+}
+
+ExceptionOr<void> WebGLRenderingContextBase::texElementImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, GCGLenum format, GCGLenum type, ElementImage& elementImage)
+{
+    return texElementImageImpl(target, level, internalformat, std::nullopt, std::nullopt, format, type, elementImage);
+}
+
+ExceptionOr<void> WebGLRenderingContextBase::texElementImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, GCGLsizei width, GCGLsizei height, GCGLenum format, GCGLenum type, ElementImage& elementImage)
+{
+    return texElementImageImpl(target, level, internalformat, std::nullopt, IntSize { width, height }, format, type, elementImage);
+}
+
+ExceptionOr<void> WebGLRenderingContextBase::texElementImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, float sx, float sy, float swidth, float sheight, GCGLenum format, GCGLenum type, ElementImage& elementImage)
+{
+    return texElementImageImpl(target, level, internalformat, FloatRect { sx, sy, swidth, sheight }, std::nullopt, format, type, elementImage);
+}
+
+ExceptionOr<void> WebGLRenderingContextBase::texElementImage2D(GCGLenum target, GCGLint level, GCGLenum internalformat, float sx, float sy, float swidth, float sheight, GCGLsizei width, GCGLsizei height, GCGLenum format, GCGLenum type, ElementImage& elementImage)
+{
+    return texElementImageImpl(target, level, internalformat, FloatRect { sx, sy, swidth, sheight }, IntSize { width, height }, format, type, elementImage);
+}
+
+ExceptionOr<void> WebGLRenderingContextBase::texElementImageImpl(GCGLenum target, GCGLint level, GCGLenum internalformat, std::optional<FloatRect> sourceRect, std::optional<IntSize> explicitDestSize, GCGLenum format, GCGLenum type, ElementImage& elementImage)
+{
+    if (isContextLost())
+        return { };
+
+    if (elementImage.isClosed())
+        return Exception { ExceptionCode::InvalidStateError, "A closed ElementImage cannot be drawn."_s };
+
+    auto* record = elementImage.record();
+    ASSERT(record);
+
+    auto boxSize = record->state().boxSize;
+    FloatRect effectiveSourceRect = sourceRect.value_or(FloatRect { FloatPoint { }, boxSize });
+    IntSize destSize = explicitDestSize.value_or(expandedIntSize(effectiveSourceRect.size()));
+
+    if (effectiveSourceRect.isEmpty() || destSize.isEmpty())
+        return { };
+
+    auto texture = validateTexImageBinding(TexImageFunctionID::TexImage2D, target);
+    if (!texture)
+        return { };
+    if (!validateTexFunc(TexImageFunctionID::TexImage2D, SourceHTMLCanvasElement, target, level, internalformat, destSize.width(), destSize.height(), 1, 0, format, type, 0, 0, 0))
+        return { };
+
+    // The record may carry pre-rasterized pixels (TB7 transferred ElementImage) or a
+    // live DisplayList (main-thread snapshot). rasterizeCanvasChildPaintRecord routes
+    // to whichever is available.
     RefPtr<Image> image = rasterizeCanvasChildPaintRecord(*record, effectiveSourceRect, destSize);
     if (!image)
         return { };

@@ -220,6 +220,10 @@ public:
     ExceptionOr<Ref<DOMMatrix>> drawElementImage(Element&, double sx, double sy, double sw, double sh, double dx, double dy);
     ExceptionOr<Ref<DOMMatrix>> drawElementImage(Element&, double sx, double sy, double sw, double sh, double dx, double dy, double dwidth, double dheight);
     ExceptionOr<Ref<DOMMatrix>> drawElementImage(ElementImage&, double dx, double dy);
+    ExceptionOr<Ref<DOMMatrix>> drawElementImage(ElementImage&, double dx, double dy, double dwidth, double dheight);
+    ExceptionOr<Ref<DOMMatrix>> drawElementImage(ElementImage&, double sx, double sy, double sw, double sh, double dx, double dy);
+    ExceptionOr<Ref<DOMMatrix>> drawElementImage(ElementImage&, double sx, double sy, double sw, double sh, double dx, double dy, double dwidth, double dheight);
+    ExceptionOr<Ref<DOMMatrix>> drawElementImageInternal(ElementImage&, std::optional<FloatRect> sourceRect, double dx, double dy, std::optional<FloatSize> explicitDestSize);
 
     void clearCanvas();
 

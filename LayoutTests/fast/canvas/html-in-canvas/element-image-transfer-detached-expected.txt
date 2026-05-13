@@ -1,0 +1,3 @@
+
+PASS ElementImage detaches on postMessage transfer (source.width = 0, draw throws)
+

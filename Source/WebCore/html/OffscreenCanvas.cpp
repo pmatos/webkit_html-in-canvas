@@ -30,10 +30,13 @@
 
 #include "BitmapImage.h"
 #include "CSSValuePool.h"
+#include "CanvasChildPaintRecord.h"
 #include "CanvasRenderingContext.h"
 #include "ContextDestructionObserverInlines.h"
 #include "Chrome.h"
 #include "DOMMatrix.h"
+#include "DrawElementImageMath.h"
+#include "ElementImage.h"
 #include "Document.h"
 #include "EventDispatcher.h"
 #include "GPU.h"
@@ -334,6 +337,41 @@ ExceptionOr<Ref<DOMMatrix>> OffscreenCanvas::getElementTransform(Element&, DOMMa
     // implementation report), eligibility always fails. Matches the InvalidStateError
     // that drawElementImage throws for an OffscreenCanvasRenderingContext2D today.
     return Exception { ExceptionCode::InvalidStateError, "OffscreenCanvas does not have a snapshot for the element"_s };
+}
+
+ExceptionOr<Ref<DOMMatrix>> OffscreenCanvas::getElementTransform(ElementImage& elementImage, DOMMatrix& drawTransform)
+{
+    // TB7: matches the matrix returned by ctx.drawElementImage(elementImage, ...).
+    // The user passes the same draw transform they will apply (CTM ∘ T(dx,dy) ∘ ...)
+    // and we compose it with the element's transform-origin and the receiver's
+    // cssToGridScale (derived from this OC's grid dims and the source canvas's
+    // unzoomedCSSSize captured at recording time).
+    if (elementImage.isClosed())
+        return Exception { ExceptionCode::InvalidStateError, "A closed ElementImage has no transform."_s };
+    auto* record = elementImage.record();
+    ASSERT(record);
+    auto& recordState = record->state();
+
+    AffineTransform draw {
+        drawTransform.a(), drawTransform.b(),
+        drawTransform.c(), drawTransform.d(),
+        drawTransform.e(), drawTransform.f(),
+    };
+
+    FloatSize cssToGridScale { 1, 1 };
+    auto sourceCSS = recordState.sourceUnzoomedCSSSize;
+    if (sourceCSS.width() > 0 && sourceCSS.height() > 0) {
+        cssToGridScale = {
+            static_cast<float>(size().width()) / sourceCSS.width(),
+            static_cast<float>(size().height()) / sourceCSS.height(),
+        };
+    }
+    auto matrix = computeDrawElementAlignmentMatrix({
+        recordState.transformOrigin,
+        cssToGridScale,
+        draw,
+    });
+    return DOMMatrix::create(WTF::move(matrix), DOMMatrixReadOnly::Is2D::Yes);
 }
 
 void OffscreenCanvas::didDraw(const std::optional<FloatRect>& rect, ShouldApplyPostProcessingToDirtyRect shouldApplyPostProcessingToDirtyRect)

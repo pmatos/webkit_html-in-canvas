@@ -27,6 +27,7 @@
 #include "CanvasChildPaintRecord.h"
 
 #include "DisplayList.h"
+#include "NativeImage.h"
 #include <wtf/StdLibExtras.h>
 #include <wtf/TZoneMallocInlines.h>
 
@@ -34,10 +35,16 @@ namespace WebCore {
 
 WTF_MAKE_TZONE_ALLOCATED_IMPL(CanvasChildPaintRecord);
 
-CanvasChildPaintRecord::CanvasChildPaintRecord(Ref<const DisplayList::DisplayList>&& displayList, CanvasChildPaintState state)
+CanvasChildPaintRecord::CanvasChildPaintRecord(Ref<const DisplayList::DisplayList>&& displayList, RefPtr<NativeImage>&& rasterizedImage, CanvasChildPaintState state)
     : m_displayList(WTF::move(displayList))
+    , m_rasterizedImage(WTF::move(rasterizedImage))
     , m_state(WTF::move(state))
 {
+}
+
+Ref<CanvasChildPaintRecord> CanvasChildPaintRecord::createFromRasterized(Ref<const DisplayList::DisplayList>&& displayList, Ref<NativeImage>&& rasterized, CanvasChildPaintState state)
+{
+    return adoptRef(*new CanvasChildPaintRecord(WTF::move(displayList), WTF::move(rasterized), state));
 }
 
 CanvasChildPaintRecord::~CanvasChildPaintRecord() = default;

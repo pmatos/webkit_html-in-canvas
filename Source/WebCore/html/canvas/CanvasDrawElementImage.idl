@@ -37,4 +37,7 @@
     [RaisesException] DOMMatrix drawElementImage(Element element, unrestricted double sx, unrestricted double sy, unrestricted double sw, unrestricted double sh, unrestricted double dx, unrestricted double dy);
     [RaisesException] DOMMatrix drawElementImage(Element element, unrestricted double sx, unrestricted double sy, unrestricted double sw, unrestricted double sh, unrestricted double dx, unrestricted double dy, unrestricted double dwidth, unrestricted double dheight);
     [RaisesException] DOMMatrix drawElementImage(ElementImage elementImage, unrestricted double dx, unrestricted double dy);
+    [RaisesException] DOMMatrix drawElementImage(ElementImage elementImage, unrestricted double dx, unrestricted double dy, unrestricted double dwidth, unrestricted double dheight);
+    [RaisesException] DOMMatrix drawElementImage(ElementImage elementImage, unrestricted double sx, unrestricted double sy, unrestricted double sw, unrestricted double sh, unrestricted double dx, unrestricted double dy);
+    [RaisesException] DOMMatrix drawElementImage(ElementImage elementImage, unrestricted double sx, unrestricted double sy, unrestricted double sw, unrestricted double sh, unrestricted double dx, unrestricted double dy, unrestricted double dwidth, unrestricted double dheight);
 };

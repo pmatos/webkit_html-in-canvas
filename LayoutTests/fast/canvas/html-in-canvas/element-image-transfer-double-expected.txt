@@ -1,0 +1,3 @@
+
+PASS Duplicate ElementImage in transfer list rejects with DataCloneError; source remains usable
+

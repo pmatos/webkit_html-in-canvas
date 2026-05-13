@@ -521,6 +521,11 @@ typedef (HTMLCanvasElement) WebGLCanvas;
     [EnabledBySetting=CanvasDrawElementEnabled, RaisesException] undefined texElementImage2D(GLenum target, GLint level, GLenum internalformat, float sx, float sy, float swidth, float sheight, GLenum format, GLenum type, Element element);
     [EnabledBySetting=CanvasDrawElementEnabled, RaisesException] undefined texElementImage2D(GLenum target, GLint level, GLenum internalformat, float sx, float sy, float swidth, float sheight, GLsizei width, GLsizei height, GLenum format, GLenum type, Element element);
 
+    [EnabledBySetting=CanvasDrawElementEnabled, RaisesException] undefined texElementImage2D(GLenum target, GLint level, GLenum internalformat, GLenum format, GLenum type, ElementImage elementImage);
+    [EnabledBySetting=CanvasDrawElementEnabled, RaisesException] undefined texElementImage2D(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLenum format, GLenum type, ElementImage elementImage);
+    [EnabledBySetting=CanvasDrawElementEnabled, RaisesException] undefined texElementImage2D(GLenum target, GLint level, GLenum internalformat, float sx, float sy, float swidth, float sheight, GLenum format, GLenum type, ElementImage elementImage);
+    [EnabledBySetting=CanvasDrawElementEnabled, RaisesException] undefined texElementImage2D(GLenum target, GLint level, GLenum internalformat, float sx, float sy, float swidth, float sheight, GLsizei width, GLsizei height, GLenum format, GLenum type, ElementImage elementImage);
+
     undefined compressedTexImage2D(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLint border, [AllowShared] ArrayBufferView data);
     undefined compressedTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, [AllowShared] ArrayBufferView data);
 

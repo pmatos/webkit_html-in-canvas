@@ -32,6 +32,7 @@
 #include "DisplayList.h"
 #include "GraphicsContext.h"
 #include "ImageBuffer.h"
+#include "NativeImage.h"
 #include "PixelFormat.h"
 
 namespace WebCore {
@@ -49,7 +50,15 @@ RefPtr<ImageBuffer> rasterizeCanvasChildPaintRecordToBuffer(const CanvasChildPai
     if (destSize.width() != sourceRect.width() || destSize.height() != sourceRect.height())
         gc.scale({ destSize.width() / sourceRect.width(), destSize.height() / sourceRect.height() });
     gc.translate(-sourceRect.x(), -sourceRect.y());
-    gc.drawDisplayList(record.displayList());
+    if (RefPtr rasterized = record.rasterizedImage()) {
+        // TB7: a transferred-and-reconstructed ElementImage carries pre-rasterized
+        // pixels. Paint them directly — GraphicsContext::drawDisplayList calls
+        // ControlFactory::singleton() which is main-thread-only and would crash on
+        // a worker-backed OffscreenCanvas-WebGL context.
+        FloatRect imageRect { FloatPoint { }, FloatSize { rasterized->size() } };
+        gc.drawNativeImage(*rasterized, imageRect, imageRect);
+    } else
+        gc.drawDisplayList(record.displayList());
 
     return buffer;
 }

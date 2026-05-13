@@ -53,6 +53,7 @@ namespace WebCore {
 
 class CanvasRenderingContext;
 class DOMMatrix;
+class ElementImage;
 class DeferredPromise;
 class Element;
 class GPU;
@@ -140,6 +141,7 @@ public:
     void convertToBlob(ImageEncodeOptions&&, Ref<DeferredPromise>&&);
 
     ExceptionOr<Ref<DOMMatrix>> getElementTransform(Element&, DOMMatrix& drawTransform);
+    ExceptionOr<Ref<DOMMatrix>> getElementTransform(ElementImage&, DOMMatrix& drawTransform);
 
     void didDraw(const std::optional<FloatRect>&, ShouldApplyPostProcessingToDirtyRect) final;
 

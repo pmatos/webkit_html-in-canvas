@@ -82,6 +82,8 @@ class CryptoKey;
 class IDBValue;
 class MessagePort;
 class DetachedImageBitmap;
+class DetachedElementImage;
+class ElementImage;
 class FragmentedSharedBuffer;
 template<typename> class ExceptionOr;
 
@@ -181,6 +183,7 @@ private:
         , std::unique_ptr<ArrayBufferContentsArray>
         , std::unique_ptr<ArrayBufferContentsArray> sharedBuffers
         , Vector<std::optional<DetachedImageBitmap>>&&
+        , Vector<std::optional<DetachedElementImage>>&& = { }
 #if ENABLE(OFFSCREEN_CANVAS_IN_WORKERS)
         , Vector<std::unique_ptr<DetachedOffscreenCanvas>>&& = { }
         , Vector<Ref<OffscreenCanvas>>&& = { }
@@ -242,6 +245,7 @@ private:
 #endif
         std::unique_ptr<ArrayBufferContentsArray> sharedBufferContentsArray { };
         Vector<std::optional<DetachedImageBitmap>> detachedImageBitmaps { };
+        Vector<std::optional<DetachedElementImage>> detachedElementImages { };
 #if ENABLE(OFFSCREEN_CANVAS_IN_WORKERS)
         Vector<std::unique_ptr<DetachedOffscreenCanvas>> detachedOffscreenCanvases { };
         Vector<Ref<OffscreenCanvas>> inMemoryOffscreenCanvases { };
