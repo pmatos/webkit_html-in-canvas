@@ -26,8 +26,10 @@
 #include "config.h"
 #include "StyledMarkedText.h"
 
+#include "CSSValueKeywords.h"
 #include "ColorBlending.h"
 #include "ElementRuleCollector.h"
+#include "PaintInfo.h"
 #include "RenderElement.h"
 #include "RenderStyle+GettersInlines.h"
 #include "RenderText.h"
@@ -133,6 +135,17 @@ static StyledMarkedText resolveStyleForMarkedText(const MarkedText& markedText, 
         style.textStyles = computeTextSelectionPaintStyle(style.textStyles, renderer, lineStyle, paintInfo, style.textShadow);
 
         Color selectionBackgroundColor = renderer.selectionBackgroundColor();
+        // Inside the <canvas layoutsubtree> recorder, replace the platform-theme
+        // selection colors with the spec-defined CSS System Highlight / HighlightText
+        // values when the renderer does not have an explicit ::selection pseudo style.
+        // The WICG html-in-canvas privacy requirement (selection-colors-default test)
+        // forbids the user's theme colors from leaking into the snapshot.
+        if (paintInfo.paintBehavior.contains(PaintBehavior::CanvasSubtreeRecording)
+            && !renderer.selectionPseudoStyle()) {
+            selectionBackgroundColor = renderer.theme().systemColor(CSSValueHighlight, { });
+            if (Color highlightText = renderer.theme().systemColor(CSSValueHighlighttext, { }); highlightText.isValid())
+                style.textStyles.fillColor = highlightText;
+        }
         style.backgroundColor = selectionBackgroundColor;
         if (selectionBackgroundColor.isValid() && selectionBackgroundColor.isVisible() && style.textStyles.fillColor == selectionBackgroundColor)
             style.backgroundColor = selectionBackgroundColor.invertedColorWithAlpha(1.0);
