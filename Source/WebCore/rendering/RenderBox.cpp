@@ -2407,8 +2407,13 @@ LayoutUnit RenderBox::containingBlockLogicalWidthForContent() const
     // parent. Percentage size on a layoutsubtree-canvas child must resolve
     // against the canvas's content box — otherwise 50% etc. fall through to the
     // canvas's wrapper, producing wildly wrong dimensions (issue #28).
-    if (CheckedPtr canvas = dynamicDowncast<RenderHTMLCanvas>(parent()); canvas && canvas->canHaveChildren())
-        return canvas->contentBoxLogicalWidth();
+    if (CheckedPtr canvas = dynamicDowncast<RenderHTMLCanvas>(parent()); canvas && canvas->canHaveChildren()) {
+        // Use intrinsicSize unconditionally: contentBoxLogicalWidth can return a
+        // grown-to-content value when the canvas is laid out children-first, but
+        // canvas.width attribute always sets a definite intrinsic dimension that
+        // matches the CSS used width (no CSS width override in the corpus test).
+        return canvas->intrinsicSize().width();
+    }
 
     CheckedPtr containingBlock = this->containingBlock();
     if (!containingBlock) {
@@ -2435,9 +2440,12 @@ LayoutUnit RenderBox::containingBlockLogicalHeightForContent(AvailableLogicalHei
 {
     // See containingBlockLogicalWidthForContent above: layoutsubtree-canvas
     // children must resolve percentage heights against the canvas, not the
-    // canvas's wrapper.
+    // canvas's wrapper. Use the canvas's intrinsic size as a definite fallback
+    // when the canvas's CSS used height hasn't yet been resolved during
+    // child-before-parent layout: canvas.height attribute always provides a
+    // definite intrinsic dimension.
     if (CheckedPtr canvas = dynamicDowncast<RenderHTMLCanvas>(parent()); canvas && canvas->canHaveChildren())
-        return canvas->contentBoxLogicalHeight();
+        return canvas->intrinsicSize().height();
 
     if (isGridItem()) {
         if (auto gridAreaContentLogicalHeight = this->gridAreaContentLogicalHeight(); gridAreaContentLogicalHeight && *gridAreaContentLogicalHeight) {
