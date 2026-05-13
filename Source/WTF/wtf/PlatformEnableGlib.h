@@ -67,6 +67,10 @@
 #define ENABLE_PDFJS 1
 #endif
 
+#if !defined(ENABLE_WEBGL_IN_WORKERS) && ENABLE(WEBGL)
+#define ENABLE_WEBGL_IN_WORKERS 1
+#endif
+
 #if !defined(ENABLE_WEBPROCESS_CACHE)
 #define ENABLE_WEBPROCESS_CACHE 1
 #endif
