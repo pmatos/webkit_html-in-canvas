@@ -292,11 +292,14 @@ void RenderVideo::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
 
     // Avoid unnecessary paints by skipping software painting if
     // the renderer is accelerated, and the paint operation does
-    // not flatten compositing layers and is not snapshotting.
+    // not flatten compositing layers, is not snapshotting, and is not
+    // recording into the <canvas layoutsubtree> display list (which has
+    // no GPU compositor on the other side to satisfy the frame).
     if (hasAcceleratedCompositing()
         && videoElement->supportsAcceleratedRendering()
         && !paintInfo.paintBehavior.contains(PaintBehavior::FlattenCompositingLayers)
-        && !paintInfo.paintBehavior.contains(PaintBehavior::Snapshotting))
+        && !paintInfo.paintBehavior.contains(PaintBehavior::Snapshotting)
+        && !paintInfo.paintBehavior.contains(PaintBehavior::CanvasSubtreeRecording))
         return;
 
     videoElement->paint(context, rect);
