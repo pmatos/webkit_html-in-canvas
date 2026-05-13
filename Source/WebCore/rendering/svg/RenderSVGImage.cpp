@@ -29,6 +29,7 @@
 
 #include "AXObjectCache.h"
 #include "BitmapImage.h"
+#include "CachedImage.h"
 #include "GeometryUtilities.h"
 #include "GraphicsContext.h"
 #include "HitTestResult.h"
@@ -131,6 +132,11 @@ void RenderSVGImage::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 
     OptionSet<PaintPhase> relevantPaintPhases { PaintPhase::Foreground, PaintPhase::ClippingMask, PaintPhase::Mask, PaintPhase::Outline, PaintPhase::SelfOutline };
     if (!shouldPaintSVGRenderer(paintInfo, relevantPaintPhases) || !imageResource().cachedImage())
+        return;
+
+    // Skip cross-origin images during the <canvas layoutsubtree> recording walk so
+    // they don't leak into drawElementImage's snapshot (privacy/svg-images-ignored).
+    if (paintInfo.requireSecurityOriginAccessForWidgets && imageResource().cachedImage()->isCORSCrossOrigin())
         return;
 
     if (paintInfo.phase == PaintPhase::ClippingMask) {

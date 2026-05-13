@@ -27,6 +27,7 @@
 #include "LegacyRenderSVGImage.h"
 #include "LegacyRenderSVGModelObjectInlines.h"
 
+#include "CachedImage.h"
 #include "FloatQuad.h"
 #include "GraphicsContext.h"
 #include "HitTestResult.h"
@@ -195,6 +196,11 @@ void LegacyRenderSVGImage::paint(PaintInfo& paintInfo, const LayoutPoint&)
 
     if (paintInfo.context().paintingDisabled() || paintInfo.phase != PaintPhase::Foreground
         || style().usedVisibility() == Visibility::Hidden || !imageResource().cachedImage())
+        return;
+
+    // Skip cross-origin images during the <canvas layoutsubtree> recording walk so
+    // they don't leak into drawElementImage's snapshot (privacy/svg-images-ignored).
+    if (paintInfo.requireSecurityOriginAccessForWidgets && imageResource().cachedImage()->isCORSCrossOrigin())
         return;
 
     FloatRect boundingBox = repaintRectInLocalCoordinates();
