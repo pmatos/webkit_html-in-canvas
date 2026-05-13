@@ -1478,28 +1478,23 @@ imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/scale-
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-ink-overflow-worker.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-scaling-worker.html [ Skip ]
 # C. Privacy reftests that still produce a real rendering diff against the
-#    Chromium-authored reference after issue #21 exposed the marker-seeding
-#    internals methods. The editing / glic / spelling-overlay-path tests now
-#    pass (and have been removed from this list); the three below expose a
-#    real privacy gap in WebKit's CanvasSubtreeRecord paint behaviour or
-#    drawElementImage rendering, which is out of scope for #21 and tracked
-#    separately as a follow-up.
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/grammar-ignored-overlay-path.html [ ImageOnlyFailure ]
+#    Chromium-authored reference. The CanvasSubtreeRecording bit (added under
+#    issue #29/#31) suppresses spelling, grammar, and target-text overlays
+#    correctly now — those tests pass. The search-text-painted overlay path
+#    remains as a follow-up (the overlay-path rendering of TextMatch markers
+#    diverges visibly from Blink even with the privacy filter applied).
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/search-text-painted-overlay-path.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/spelling-ignored-fast-path.html [ ImageOnlyFailure ]
 # TB12 follow-up — reftests imported from Chromium now detect correctly after
 # adding -expected.html companions. The entries below fail the pixel comparison
-# against the Chromium-authored reference, exposing real WebKit-vs-Blink
-# rendering gaps in features used by drawElementImage (compositing operators,
-# animated paint flow, selection rendering, video frame extraction).
+# against the Chromium-authored reference. global-alpha-basic now passes after
+# the intermediate-buffer routing for compositing/alpha (#27); the remaining
+# entries are real WebKit-vs-Blink rendering gaps under investigation.
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/compositing-op-basic.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/compositing-op-non-opaque-element.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/draw-element-image-scale-variant.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/global-alpha-basic.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/opacity-animation.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/percent-sizing.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/selection-colors-default.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/target-text-ignored-overlay-path.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/video-webm.html [ ImageOnlyFailure ]
 
 # TB11 visual-effect fidelity — triaged per-test. Recorder/replay cure landed
