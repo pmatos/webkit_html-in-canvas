@@ -1491,7 +1491,6 @@ imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privac
 # entries are real WebKit-vs-Blink rendering gaps under investigation.
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/draw-element-image-scale-variant.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/opacity-animation.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/percent-sizing.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/selection-colors-default.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/video-webm.html [ ImageOnlyFailure ]
 
