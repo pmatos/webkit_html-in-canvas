@@ -241,6 +241,16 @@ bool CanvasBase::shouldAccelerate() const
     if (!scriptExecutionContext->settingsValues().hardwareAccelerationEnabled)
         return false;
 #endif
+#if USE(SKIA)
+    // OffscreenCanvas running on a worker thread cannot share a Ganesh GPU
+    // backend with the main thread — Skia's SingleOwner debug invariant
+    // (Device.cpp / GrResourceCache.cpp) asserts when the surface is touched
+    // from a thread other than the one that registered it. Force unaccelerated
+    // rendering for any worker-side canvas so the Skia surface stays in the
+    // raster path and there's nothing to mis-own (issue #34).
+    if (scriptExecutionContext->isWorkerGlobalScope())
+        return false;
+#endif
     return true;
 #else
     UNUSED_PARAM(area);

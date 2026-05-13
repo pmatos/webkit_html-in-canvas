@@ -3626,7 +3626,10 @@ HandleUserInputEventResult EventHandler::handleWheelEventInternal(const Platform
         ScrollableArea* endTarget = scrollableArea.get();
         if (!endTarget)
             endTarget = view.get();
-        if (endTarget && endTarget->isAwaitingScrollend())
+        // scrollDidEnd internally early-returns when isAwaitingScrollend is
+        // false, so the dispatch is naturally a no-op on areas that never
+        // scrolled.
+        if (endTarget)
             endTarget->scrollDidEnd();
     }
 #endif
