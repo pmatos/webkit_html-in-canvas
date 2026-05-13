@@ -1273,14 +1273,25 @@ void TextBoxPainter::paintPlatformDocumentMarkers()
 {
     if (m_paintInfo.paintBehavior.contains(PaintBehavior::Snapshotting) && !m_paintInfo.paintBehavior.contains(PaintBehavior::IncludeDocumentMarkers))
         return;
-    // Spelling/grammar/dictation markers are local UI hints, not user content. They must
-    // not leak into the canvas-subtree recording where they'd become drawElementImage
-    // pixel data readable by the page. See PRD #1's "cross-origin pixel suppression is a
-    // property of the paint phase" decision (issue #31, #5).
-    if (m_paintInfo.paintBehavior.contains(PaintBehavior::CanvasSubtreeRecording))
-        return;
 
     auto markedTexts = MarkedText::collectForDocumentMarkers(m_renderer, m_selectableRange, MarkedText::PaintPhase::Decoration);
+
+    // Spelling/grammar/dictation markers are local UI hints, not user content; drop
+    // them so they do not become drawElementImage pixel data readable by the page
+    // (issue #31, #5). TextMatch / ActiveTextMatch markers ARE user-visible content
+    // (Find-in-page highlights) — per privacy/search-text-painted-overlay-path
+    // (issue #42) the recording must keep them through the overlay path.
+    if (m_paintInfo.paintBehavior.contains(PaintBehavior::CanvasSubtreeRecording)) {
+        markedTexts.removeAllMatching([](const MarkedText& entry) {
+            switch (entry.type) {
+            case MarkedText::Type::TextMatch:
+            case MarkedText::Type::ActiveTextMatch:
+                return false;
+            default:
+                return true;
+            }
+        });
+    }
     // We want to paint text-decoration-line: spelling-error and grammar-error the same way we natively paint text marked with spelling errors
     auto textDecorationLineSpellingErrorAsMarkedText = markedTextForTextDecorationLineSpellingError(m_renderer);
     auto textDecorationLineGrammarErrorAsMarkedText = markedTextForTextDecorationLineGrammarError(m_renderer);
