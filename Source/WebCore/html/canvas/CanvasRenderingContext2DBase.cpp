@@ -1754,7 +1754,14 @@ ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImageIntern
                 auto& bufferContext = buffer->context();
                 // Apply the same CTM the direct-replay path would, but with
                 // (dx, dy) = (0, 0) because the buffer is local-coordinate.
-                bufferContext.translate(-record->state().recordingOrigin.x(), -record->state().recordingOrigin.y());
+                // See the comment on the direct-replay branch below: scale the
+                // recordingOrigin by the (sx, sy) used downstream so the recorded
+                // origin lands at (0, 0) in the buffer.
+                float scaleForOriginX = wantScale ? scaleX : 1.0f;
+                float scaleForOriginY = wantScale ? scaleY : 1.0f;
+                bufferContext.translate(
+                    -scaleForOriginX * record->state().recordingOrigin.x(),
+                    -scaleForOriginY * record->state().recordingOrigin.y());
                 if (wantScale && (scaleX != 1.0f || scaleY != 1.0f))
                     bufferContext.scale(FloatSize { scaleX, scaleY });
                 if (sourceRect)
@@ -1781,7 +1788,20 @@ ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImageIntern
             }
         } else {
             context->clip(destRect);
-            context->translate(static_cast<float>(dx) - record->state().recordingOrigin.x(), static_cast<float>(dy) - record->state().recordingOrigin.y());
+            // GraphicsContext applies the CTM as scale-first-then-translate when both
+            // ops accumulate: a document-coords point P in the recorded display list
+            // becomes (sx * P + t) on the canvas. To make the recorded origin
+            // (recordingOrigin) land at (dx, dy) we need t = (dx, dy) - (sx, sy) *
+            // recordingOrigin — NOT (dx, dy) - recordingOrigin (which only works when
+            // sx == sy == 1). Without the scale-factor in the subtraction, a
+            // fractional scale leaves the content shifted by (1 - sx) * recordingOrigin
+            // and the clip eats the visible left/top edges — observed as a 4-6 px
+            // size loss on draw-element-image-scale-variant.html (#39).
+            float scaleForOriginX = wantScale ? scaleX : 1.0f;
+            float scaleForOriginY = wantScale ? scaleY : 1.0f;
+            context->translate(
+                static_cast<float>(dx) - scaleForOriginX * record->state().recordingOrigin.x(),
+                static_cast<float>(dy) - scaleForOriginY * record->state().recordingOrigin.y());
             if (wantScale && (scaleX != 1.0f || scaleY != 1.0f))
                 context->scale(FloatSize { scaleX, scaleY });
             if (sourceRect)
@@ -1880,8 +1900,14 @@ ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImageIntern
         context->clip(destRect);
         // Translate so the recording's origin (the child's absolute borderBox.location())
         // lands at (dx, dy). TB6 stores recordingOrigin in state for this purpose.
-        context->translate(static_cast<float>(dx) - recordState.recordingOrigin.x(),
-                           static_cast<float>(dy) - recordState.recordingOrigin.y());
+        // When wantScale != 1.0 the recordingOrigin must be pre-scaled by (sx, sy)
+        // so the recorded origin still lands at (dx, dy) under the scale-then-
+        // translate CTM; otherwise the content shifts by (1 - s) * recordingOrigin
+        // and the clip clips visible edges (#39 draw-element-image-scale-variant).
+        float scaleForOriginX = wantScale ? scaleX : 1.0f;
+        float scaleForOriginY = wantScale ? scaleY : 1.0f;
+        context->translate(static_cast<float>(dx) - scaleForOriginX * recordState.recordingOrigin.x(),
+                           static_cast<float>(dy) - scaleForOriginY * recordState.recordingOrigin.y());
         if (wantScale && (scaleX != 1.0f || scaleY != 1.0f))
             context->scale(FloatSize { scaleX, scaleY });
         if (sourceRect)
