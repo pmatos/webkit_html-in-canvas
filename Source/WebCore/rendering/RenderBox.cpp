@@ -74,6 +74,7 @@
 #include "RenderFragmentContainer.h"
 #include "RenderGeometryMap.h"
 #include "RenderGrid.h"
+#include "RenderHTMLCanvas.h"
 #include "RenderImage.h"
 #include "RenderInline.h"
 #include "RenderIterator.h"
@@ -2399,6 +2400,16 @@ LayoutUnit RenderBox::shrinkLogicalWidthToAvoidFloats(LayoutUnit childMarginStar
 
 LayoutUnit RenderBox::containingBlockLogicalWidthForContent() const
 {
+    // <canvas layoutsubtree> hosts its DOM children as layout boxes per the WICG
+    // html-in-canvas spec, but RenderHTMLCanvas inherits from RenderReplaced
+    // (not RenderBlock), so the default containingBlock() walk in
+    // containingBlockForPositionType skips over it and returns the canvas's
+    // parent. Percentage size on a layoutsubtree-canvas child must resolve
+    // against the canvas's content box — otherwise 50% etc. fall through to the
+    // canvas's wrapper, producing wildly wrong dimensions (issue #28).
+    if (CheckedPtr canvas = dynamicDowncast<RenderHTMLCanvas>(parent()); canvas && canvas->canHaveChildren())
+        return canvas->contentBoxLogicalWidth();
+
     CheckedPtr containingBlock = this->containingBlock();
     if (!containingBlock) {
         // Should not be called on detached renderer (e.g. during initial style setting).
@@ -2422,6 +2433,12 @@ LayoutUnit RenderBox::containingBlockLogicalWidthForContent() const
 
 LayoutUnit RenderBox::containingBlockLogicalHeightForContent(AvailableLogicalHeightType heightType) const
 {
+    // See containingBlockLogicalWidthForContent above: layoutsubtree-canvas
+    // children must resolve percentage heights against the canvas, not the
+    // canvas's wrapper.
+    if (CheckedPtr canvas = dynamicDowncast<RenderHTMLCanvas>(parent()); canvas && canvas->canHaveChildren())
+        return canvas->contentBoxLogicalHeight();
+
     if (isGridItem()) {
         if (auto gridAreaContentLogicalHeight = this->gridAreaContentLogicalHeight(); gridAreaContentLogicalHeight && *gridAreaContentLogicalHeight) {
             // FIXME: Containing block for a grid item is the grid area it's located in. We need to return whatever
