@@ -1510,12 +1510,14 @@ imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/video-
 # Tracking: https://github.com/pmatos/WebKit_HTML-in-canvas/issues/25.
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/css-backdrop-filter-image.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/css-filter-image.html [ ImageOnlyFailure ]
-# Bucket W — WebKit-vs-Blink subpixel antialiasing at primitive borders
-# (backdrop-filter applies correctly; rounded-rect outline differs by 1-2 px).
-# Out of TB11 scope; would need cross-engine font/path-rendering work.
+# Bucket W — accepted GTK/Skia-vs-Blink-Skia subpixel antialiasing divergence
+# at primitive borders. backdrop-filter / clip-path apply correctly; the
+# rounded-rect / circle outline AA differs by 1-2 px (a property of the
+# underlying graphics stack, not drawElementImage). Per the triage in #33,
+# baselining a port-specific PNG would bake in this machine's font/path-AA
+# output, which flakes on Skia/Cairo updates — so these stay as accepted
+# divergence rather than getting per-port baselines.
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/css-backdrop-filter.html [ ImageOnlyFailure ]
-# Bucket W — WebKit-vs-Blink subpixel antialiasing at the clip-path circle
-# outline. clip-path applies correctly; antialiasing differs by ~1 px.
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/css-clip-path-on-div.html [ ImageOnlyFailure ]
 
 # The drawElementImage/privacy/*.https.sub.html corpus tests run today as
