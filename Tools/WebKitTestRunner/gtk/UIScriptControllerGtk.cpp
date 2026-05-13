@@ -38,6 +38,7 @@
 #include <gtk/gtk.h>
 #include <wtf/JSONValues.h>
 #include <wtf/RunLoop.h>
+#include <wtf/Scope.h>
 
 namespace WTR {
 
@@ -226,6 +227,161 @@ double UIScriptControllerGtk::zoomScale() const
 {
     auto page = TestController::singleton().mainWebView()->page();
     return WKPageGetScaleFactor(page);
+}
+
+// JSON schema produced by LayoutTests/resources/testdriver-vendor.js
+// dispatchWheelActions(): { events: [ { type, viewX, viewY, deltaX, deltaY,
+// phase?, momentumPhase? }, ... ] }.
+static constexpr auto topLevelEventInfoKey = "events"_s;
+static constexpr auto eventTypeKey = "type"_s;
+static constexpr auto viewRelativeXPositionKey = "viewX"_s;
+static constexpr auto viewRelativeYPositionKey = "viewY"_s;
+static constexpr auto deltaXKey = "deltaX"_s;
+static constexpr auto deltaYKey = "deltaY"_s;
+static constexpr auto phaseKey = "phase"_s;
+static constexpr auto momentumPhaseKey = "momentumPhase"_s;
+
+// Integer phase codes consumed by
+// EventSenderProxy::mouseScrollByWithWheelAndMomentumPhases (see the switch at
+// Tools/WebKitTestRunner/gtk/EventSenderProxyGtk.cpp). They mirror the
+// WheelEventPhase enum in
+// Source/WebKit/UIProcess/API/gtk/WebKitWebViewBaseInternal.h.
+static std::optional<int> wheelPhaseCodeFromString(const String& s)
+{
+    if (s == "began"_s)
+        return 1;
+    if (s == "changed"_s)
+        return 2;
+    if (s == "continue"_s)
+        return 2;
+    if (s == "ended"_s)
+        return 4;
+    if (s == "cancelled"_s)
+        return 8;
+    if (s == "maybegin"_s)
+        return 128;
+    return std::nullopt;
+}
+
+static std::optional<int> momentumPhaseCodeFromString(const String& s)
+{
+    if (s == "began"_s)
+        return 1;
+    if (s == "changed"_s)
+        return 2;
+    if (s == "ended"_s)
+        return 3;
+    return std::nullopt;
+}
+
+void UIScriptControllerGtk::sendEventStream(JSStringRef eventsJSON, JSValueRef callback)
+{
+    auto* eventSender = TestController::singleton().eventSenderProxy();
+    if (!eventSender) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+
+    auto completeAsync = [this, callbackID] {
+        RunLoop::mainSingleton().dispatch([this, protectedThis = Ref { *this }, callbackID] {
+            if (!m_context)
+                return;
+            m_context->asyncTaskComplete(callbackID);
+        });
+    };
+
+    // testdriver-vendor.js encodes WPT WebDriver scroll actions as wheel
+    // events with pixel-precise deltas. The legacy mouseScrollBy* path defaults
+    // to non-precise (tick-based) deltas, where the same deltaY would scale
+    // up by pixelsPerScrollTick. Save and restore so we don't perturb the
+    // eventSender state observable to other callers in the same test.
+    bool savedHasPreciseDeltas = eventSender->wheelHasPreciseDeltas();
+    eventSender->setWheelHasPreciseDeltas(true);
+    auto restorePreciseDeltas = makeScopeExit([eventSender, savedHasPreciseDeltas] {
+        eventSender->setWheelHasPreciseDeltas(savedHasPreciseDeltas);
+    });
+
+    auto parsed = JSON::Value::parseJSON(toWTFString(eventsJSON));
+    auto rootObject = parsed ? parsed->asObject() : nullptr;
+    auto events = rootObject ? rootObject->getArray(topLevelEventInfoKey) : nullptr;
+    if (!events) {
+        WTFLogAlways("UIScriptControllerGtk::sendEventStream: JSON is not convertible to { events: [...] }");
+        completeAsync();
+        return;
+    }
+
+    double currentViewRelativeX = 0;
+    double currentViewRelativeY = 0;
+    bool hasPositioned = false;
+
+    for (Ref<JSON::Value> item : *events) {
+        auto event = item->asObject();
+        if (!event)
+            break;
+        auto type = event->getString(eventTypeKey);
+        if (type.isNull()) {
+            WTFLogAlways("UIScriptControllerGtk::sendEventStream: missing 'type' key");
+            break;
+        }
+        if (type != "wheel"_s)
+            continue;
+
+        auto phaseStr = event->getString(phaseKey);
+        auto momentumStr = event->getString(momentumPhaseKey);
+        if (phaseStr.isNull() && momentumStr.isNull()) {
+            WTFLogAlways("UIScriptControllerGtk::sendEventStream: wheel event must specify phase or momentumPhase");
+            break;
+        }
+
+        int phaseCode = 0;
+        int momentumCode = 0;
+        if (!phaseStr.isNull()) {
+            auto code = wheelPhaseCodeFromString(phaseStr);
+            if (!code) {
+                WTFLogAlways("UIScriptControllerGtk::sendEventStream: invalid phase value");
+                break;
+            }
+            phaseCode = *code;
+        }
+        if (!momentumStr.isNull()) {
+            auto code = momentumPhaseCodeFromString(momentumStr);
+            if (!code) {
+                WTFLogAlways("UIScriptControllerGtk::sendEventStream: invalid momentumPhase value");
+                break;
+            }
+            momentumCode = *code;
+        }
+
+        bool positionUpdated = false;
+        if (auto x = event->getDouble(viewRelativeXPositionKey)) {
+            currentViewRelativeX = *x;
+            positionUpdated = true;
+        }
+        if (auto y = event->getDouble(viewRelativeYPositionKey)) {
+            currentViewRelativeY = *y;
+            positionUpdated = true;
+        }
+
+        double deltaX = event->getDouble(deltaXKey).value_or(0);
+        double deltaY = event->getDouble(deltaYKey).value_or(0);
+
+        // EventSenderProxy::mouseScrollByWithWheelAndMomentumPhases reads
+        // m_position. Update it once before the first scroll and again whenever
+        // the JSON event explicitly carries new view coordinates. testdriver-
+        // vendor.js sets viewX/viewY only on the first event of a stream.
+        if (positionUpdated || !hasPositioned) {
+            eventSender->mouseMoveTo(currentViewRelativeX, currentViewRelativeY);
+            hasPositioned = true;
+        }
+
+        eventSender->mouseScrollByWithWheelAndMomentumPhases(
+            static_cast<int>(deltaX), static_cast<int>(deltaY),
+            phaseCode, momentumCode);
+    }
+
+    completeAsync();
 }
 
 } // namespace WTR

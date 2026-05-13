@@ -3578,7 +3578,7 @@ HandleUserInputEventResult EventHandler::handleWheelEventInternal(const Platform
     }
 #endif
 
-#if PLATFORM(COCOA) || PLATFORM(WIN)
+#if PLATFORM(COCOA) || PLATFORM(WIN) || PLATFORM(GTK) || PLATFORM(WPE)
     LOG_WITH_STREAM(Scrolling, stream << "EventHandler::handleWheelEvent " << event << " processing steps " << processingSteps);
     auto monitor = frame->page()->wheelEventTestMonitor();
     if (monitor)
@@ -3612,10 +3612,19 @@ HandleUserInputEventResult EventHandler::handleWheelEventInternal(const Platform
     // itself finds and tries to scroll overflow scrollers.
     determineWheelEventTarget(event, element, scrollableArea, isOverWidget);
 
-#if PLATFORM(COCOA) || PLATFORM(WIN)
+#if PLATFORM(COCOA) || PLATFORM(WIN) || PLATFORM(GTK) || PLATFORM(WPE)
     std::unique_ptr<WheelEventTestMonitorCompletionDeferrer> deferrer;
-    if (scrollableArea)
-        deferrer = makeUnique<WheelEventTestMonitorCompletionDeferrer>(monitor.get(), scrollableArea->scrollingNodeIDForTesting(), WheelEventTestMonitor::DeferReason::HandlingWheelEventOnMainThread);
+    if (monitor) {
+        // determineWheelEventTarget does not always populate scrollableArea up
+        // front (see FIXME above); on overflow:scroll elements the scroller is
+        // resolved later by element dispatch. Create the deferrer regardless so
+        // WheelEventTestMonitor records a deferral cycle for every wheel event
+        // — otherwise callAfterScrollingCompletes never fires on ports where
+        // scrollable areas are commonly resolved late.
+        static NeverDestroyed<ScrollingNodeID> sentinelID = ScrollingNodeID::generate();
+        auto nodeID = scrollableArea ? scrollableArea->scrollingNodeIDForTesting() : sentinelID.get();
+        deferrer = makeUnique<WheelEventTestMonitorCompletionDeferrer>(monitor.get(), nodeID, WheelEventTestMonitor::DeferReason::HandlingWheelEventOnMainThread);
+    }
 #endif
 
     if (element) {

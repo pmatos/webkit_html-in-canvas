@@ -1519,12 +1519,16 @@ imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/css-cl
 
 # TB1a follow-ups — RenderText::nodeAtPoint ASSERT_NOT_REACHED in RenderBox's
 # child loop was fixed (Source/WebCore/rendering/RenderBox.cpp). Two scroll
-# tests remain blocked on a test-infra gap:
-#   * onpaint-after-scroll{,-2}.html: test_driver.Actions().scroll() depends on
-#     UIScriptController::sendEventStream, which is notImplemented() on the GTK
-#     test runner (Tools/TestRunnerShared/UIScriptContext/UIScriptController.h
-#     line 98 asserts SHOULD_NEVER_BE_REACHED). Not a canvas/scroll-dispatch bug;
-#     needs synthetic-input plumbing in WebKitTestRunner GTK.
+# tests still blocked, but the blocker has moved:
+#   * onpaint-after-scroll{,-2}.html: UIScriptController::sendEventStream is now
+#     implemented on the GTK runner (issue #23) and the runner no longer crashes.
+#     The tests still time out because scroll_support.js's
+#     waitForScrollEndFallbackToDelayWithoutScrollEvent uses the scrollend
+#     branch whenever window.onscrollend is defined, and GTK does not dispatch
+#     scrollend for non-animated wheel scrolls (the testdriver path uses
+#     hasPreciseScrollingDeltas, which bypasses ScrollAnimationKinetic where
+#     b/306243 wired scrollend on GTK). Re-enable once scrollend dispatch for
+#     non-animated wheels lands.
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/onpaint-after-scroll.html [ Skip ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/onpaint-after-scroll-2.html [ Skip ]
 # ANGLE/WebGL flake (GenerateTextureFormatCaps assertion in

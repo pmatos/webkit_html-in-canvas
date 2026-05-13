@@ -73,6 +73,7 @@ public:
     void mouseScrollByWithWheelAndMomentumPhases(int x, int y, int phase, int momentum);
 #if PLATFORM(GTK)
     void setWheelHasPreciseDeltas(bool);
+    bool wheelHasPreciseDeltas() const { return m_hasPreciseDeltas; }
 #endif
     void continuousMouseScrollBy(int x, int y, bool paged);
 
