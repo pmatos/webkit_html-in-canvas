@@ -111,6 +111,7 @@
 #include "RenderHTMLCanvas.h"
 #include "RenderImage.h"
 #include "RenderInline.h"
+#include "RenderDescendantIterator.h"
 #include "RenderIterator.h"
 #include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
@@ -4094,9 +4095,19 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
             // with its filter applied — to an intermediate ImageBuffer using a
             // normal GraphicsContext, then emit a single drawImageBuffer onto the
             // recorder. drawElementImage replay later draws the filtered pixels.
-            // (Issue #25.)
-            auto hasReferenceFilter = renderer->style().filter().hasReferenceFilter()
-                || renderer->style().backdropFilter().hasReferenceFilter();
+            // (Issues #25, #37.)
+            auto hasReferenceFilterDeep = [](const RenderElement& root) -> bool {
+                if (root.style().filter().hasReferenceFilter()
+                    || root.style().backdropFilter().hasReferenceFilter())
+                    return true;
+                for (auto& descendant : descendantsOfType<RenderElement>(root)) {
+                    if (descendant.style().filter().hasReferenceFilter()
+                        || descendant.style().backdropFilter().hasReferenceFilter())
+                        return true;
+                }
+                return false;
+            };
+            auto hasReferenceFilter = hasReferenceFilterDeep(*renderer);
             RefPtr<ImageBuffer> filterRasterBuffer;
             if (hasReferenceFilter) {
                 filterRasterBuffer = ImageBuffer::create(
