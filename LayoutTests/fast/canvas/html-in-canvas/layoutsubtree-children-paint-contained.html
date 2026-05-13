@@ -1,5 +1,5 @@
 <!DOCTYPE html><!-- webkit-test-runner [ CanvasDrawElementEnabled=true ] -->
-<title>HTMLCanvasElement[layoutsubtree] applies layout + paint containment to direct children</title>
+<title>HTMLCanvasElement[layoutsubtree] applies paint containment to direct children</title>
 <script src="../../../resources/testharness.js"></script>
 <script src="../../../resources/testharnessreport.js"></script>
 <style>
@@ -16,16 +16,19 @@
 </canvas>
 <script>
 test(() => {
-    // Both layout and paint containment are synthesized. Layout containment is
-    // required so the direct child gets a RenderLayer regardless of renderer
-    // class (RenderBox::requiresLayer checks usedContain().contains(Layout) at
-    // RenderBox.cpp:5441). Without layout containment, RenderReplaced subclasses
-    // like RenderSVGRoot and RenderHTMLCanvas (nested-canvas direct child) never
-    // get layers and the snapshot recording walk skips them — that was the
-    // root cause of issue #22.
-    assert_equals(getComputedStyle(child1).contain, "layout paint", "child1 has layout + paint containment");
-    assert_equals(getComputedStyle(child2).contain, "layout paint", "child2 has layout + paint containment");
-}, "Direct children of <canvas layoutsubtree> have contain: layout paint");
+    // Paint containment is synthesized on every direct child; the WPT-imported
+    // containment.html test asserts the computed value must be exactly "paint"
+    // (issue #43). For RenderBlock subclasses (divs etc.) paint containment is
+    // sufficient — RenderBox::updateFromStyle translates effective-overflow
+    // non-visible into HasNonVisibleOverflow → requiresLayer. SVG roots get
+    // Layout containment added on top (StyleAdjuster.cpp) so they reach
+    // requiresLayer via usedContain().contains(Layout) instead. Plain nested
+    // canvases deliberately stay layerless (nested-canvas-not-rendered.html,
+    // issue #45) and pick up a layer via canvas compositing if they hold a
+    // rendering context.
+    assert_equals(getComputedStyle(child1).contain, "paint", "child1 has paint containment");
+    assert_equals(getComputedStyle(child2).contain, "paint", "child2 has paint containment");
+}, "Direct children of <canvas layoutsubtree> have contain: paint");
 
 test(() => {
     assert_equals(getComputedStyle(child1).position, "static", "child1 forced to position: static");

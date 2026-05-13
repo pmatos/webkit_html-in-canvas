@@ -1,5 +1,5 @@
 
-PASS Direct children of <canvas layoutsubtree> have contain: layout paint
+PASS Direct children of <canvas layoutsubtree> have contain: paint
 PASS Direct children of <canvas layoutsubtree> have position: static
 PASS Adjustment is scoped to direct children only
 PASS Each direct child of <canvas layoutsubtree> is a containing block for its abs-positioned descendants
