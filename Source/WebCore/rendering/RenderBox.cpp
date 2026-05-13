@@ -3925,6 +3925,16 @@ static bool NODELETE tableCellShouldHaveZeroInitialSize(const RenderTableCell& t
 
 template<typename SizeType> std::optional<LayoutUnit> RenderBox::computePercentageLogicalHeightGeneric(const SizeType& logicalHeight, UpdatePercentageHeightDescendants updateDescendants) const
 {
+    // <canvas layoutsubtree> hosts children as layout boxes, but RenderHTMLCanvas
+    // is RenderReplaced (not RenderBlock), so containingBlock() lands on the
+    // canvas's wrapper. Percentage HEIGHT should resolve against the canvas's
+    // intrinsic dimensions, which the canvas.height attribute makes definite —
+    // bypass the regular containing-block walk for this case (issue #28).
+    if (CheckedPtr canvas = dynamicDowncast<RenderHTMLCanvas>(parent()); canvas && canvas->canHaveChildren()) {
+        auto h = LayoutUnit { canvas->intrinsicSize().height() };
+        return Style::evaluate<LayoutUnit>(logicalHeight, h, style().usedZoomForLength());
+    }
+
     bool skippedAutoHeightContainingBlock = false;
     auto* containingBlock = this->containingBlock();
     const RenderBox* containingBlockChild = this;
