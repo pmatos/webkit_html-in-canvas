@@ -4068,6 +4068,11 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
 
             auto recordingInfo = paintingInfo;
             recordingInfo.paintBehavior.remove(PaintBehavior::CanvasSubtreeRecord);
+            // PaintBehavior::CanvasSubtreeRecording signals "this paint walk is recording
+            // into the drawElementImage display list" so the marker painters (spelling /
+            // grammar / target-text) can drop themselves. The recorder still must paint
+            // text and selection; only privacy-sensitive UI-only overlays are skipped.
+            recordingInfo.paintBehavior.add(PaintBehavior::CanvasSubtreeRecording);
             recordingInfo.requireSecurityOriginAccessForWidgets = true;
 
             // The WICG html-in-canvas spec requires drawElementImage to record the

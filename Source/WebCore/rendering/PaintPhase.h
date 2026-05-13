@@ -82,6 +82,7 @@ enum class PaintBehavior : uint32_t {
     DraggableSnapshot                           = 1 << 23,
     IncludeDocumentMarkers                      = 1 << 24,
     CanvasSubtreeRecord                         = 1 << 25, // Painting under <canvas layoutsubtree>: suppress on-screen draw of subtree descendants.
+    CanvasSubtreeRecording                      = 1 << 26, // Painting INTO the <canvas layoutsubtree> recorder: drop privacy-sensitive overlays (spelling/grammar/target-text markers) so they don't leak into drawElementImage.
 };
 
 } // namespace WebCore

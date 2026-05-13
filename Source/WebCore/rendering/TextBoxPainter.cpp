@@ -372,9 +372,22 @@ void TextBoxPainter::paintCompositionForeground(const StyledMarkedText& markedTe
 
 void TextBoxPainter::paintForegroundAndDecorations()
 {
+    // When recording into the <canvas layoutsubtree> display list, ::target-text
+    // (FragmentHighlight) is a UA-managed overlay tied to URL fragment navigation
+    // and must not leak into drawElementImage. Drop FragmentHighlight entries here
+    // before they reach the foreground / decoration / background paint paths.
+    auto filterFragmentHighlightForCanvasRecording = [&](Vector<MarkedText>&& markedTexts) {
+        if (!m_paintInfo.paintBehavior.contains(PaintBehavior::CanvasSubtreeRecording))
+            return markedTexts;
+        markedTexts.removeAllMatching([](const MarkedText& entry) {
+            return entry.type == MarkedText::Type::FragmentHighlight;
+        });
+        return markedTexts;
+    };
+
     auto shouldPaintSelectionForeground = m_haveSelection && !m_compositionWithCustomUnderlines;
     auto hasTextDecoration = !m_style->textDecorationLineInEffect().isNone();
-    auto hasHighlightDecoration = m_document->hasHighlight() && !MarkedText::collectForHighlights(m_renderer, m_selectableRange, MarkedText::PaintPhase::Decoration).isEmpty();
+    auto hasHighlightDecoration = m_document->hasHighlight() && !filterFragmentHighlightForCanvasRecording(MarkedText::collectForHighlights(m_renderer, m_selectableRange, MarkedText::PaintPhase::Decoration)).isEmpty();
 
     auto hasSpellingOrGrammarDecoration = [&] {
         auto markedTexts = MarkedText::collectForDocumentMarkers(m_renderer, m_selectableRange, MarkedText::PaintPhase::Decoration);
@@ -432,7 +445,7 @@ void TextBoxPainter::paintForegroundAndDecorations()
 
         if (!m_isPrinting) {
             markedTexts.appendVector(MarkedText::collectForDocumentMarkers(m_renderer, m_selectableRange, MarkedText::PaintPhase::Foreground));
-            markedTexts.appendVector(MarkedText::collectForHighlights(m_renderer, m_selectableRange, MarkedText::PaintPhase::Foreground));
+            markedTexts.appendVector(filterFragmentHighlightForCanvasRecording(MarkedText::collectForHighlights(m_renderer, m_selectableRange, MarkedText::PaintPhase::Foreground)));
 
             bool shouldPaintDraggedContent = !(m_paintInfo.paintBehavior.contains(PaintBehavior::ExcludeSelection));
             if (shouldPaintDraggedContent) {
@@ -554,7 +567,15 @@ void TextBoxPainter::paintBackgroundFill()
 
     Vector<MarkedText> markedTexts;
     markedTexts.appendVector(MarkedText::collectForDocumentMarkers(m_renderer, m_selectableRange, MarkedText::PaintPhase::Background));
-    markedTexts.appendVector(MarkedText::collectForHighlights(m_renderer, m_selectableRange, MarkedText::PaintPhase::Background));
+    auto backgroundHighlights = MarkedText::collectForHighlights(m_renderer, m_selectableRange, MarkedText::PaintPhase::Background);
+    // Same FragmentHighlight (::target-text) privacy filter as paintForegroundAndDecorations:
+    // drop UA-managed URL-fragment overlays from the canvas-subtree recording.
+    if (m_paintInfo.paintBehavior.contains(PaintBehavior::CanvasSubtreeRecording)) {
+        backgroundHighlights.removeAllMatching([](const MarkedText& entry) {
+            return entry.type == MarkedText::Type::FragmentHighlight;
+        });
+    }
+    markedTexts.appendVector(WTF::move(backgroundHighlights));
 
 #if ENABLE(TEXT_SELECTION)
     auto hasSelectionWithNonCustomUnderline = m_haveSelection && !m_compositionWithCustomUnderlines;
@@ -1251,6 +1272,12 @@ static std::optional<MarkedText> NODELETE markedTextForTextDecorationLineGrammar
 void TextBoxPainter::paintPlatformDocumentMarkers()
 {
     if (m_paintInfo.paintBehavior.contains(PaintBehavior::Snapshotting) && !m_paintInfo.paintBehavior.contains(PaintBehavior::IncludeDocumentMarkers))
+        return;
+    // Spelling/grammar/dictation markers are local UI hints, not user content. They must
+    // not leak into the canvas-subtree recording where they'd become drawElementImage
+    // pixel data readable by the page. See PRD #1's "cross-origin pixel suppression is a
+    // property of the paint phase" decision (issue #31, #5).
+    if (m_paintInfo.paintBehavior.contains(PaintBehavior::CanvasSubtreeRecording))
         return;
 
     auto markedTexts = MarkedText::collectForDocumentMarkers(m_renderer, m_selectableRange, MarkedText::PaintPhase::Decoration);
