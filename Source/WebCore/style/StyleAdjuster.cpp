@@ -63,6 +63,7 @@
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "SVGElement.h"
+#include "SVGElementInlines.h"
 #include "SVGGraphicsElement.h"
 #include "SVGNames.h"
 #include "SVGSVGElement.h"
@@ -477,23 +478,27 @@ void Adjuster::adjust(RenderStyle& style) const
                 style.setIsolation(Isolation::Isolate);
 
             // Each direct child of <canvas layoutsubtree> is blockified, position:
-            // static, and gains layout + paint containment so it becomes a stacking
-            // context and a containing block for descendants. Layout containment is
-            // required (not just paint) because RenderBox::updateFromStyle() at
-            // RenderBox.cpp:512-540 only translates "effective overflow non-visible"
-            // into the HasNonVisibleOverflow state bit for isRenderBlock() renderers
-            // — RenderReplaced subclasses (RenderSVGRoot, RenderHTMLCanvas as a
-            // nested-canvas direct child) would otherwise never satisfy
-            // RenderBox::requiresLayer(), so they would not get a RenderLayer and
-            // the recording walk at RenderLayer::paintList would skip them. Layout
-            // containment forces requiresLayer() via RenderBox.cpp:5441
-            // (style().usedContain().contains(Layout)) regardless of renderer class.
+            // static, and gains paint containment so it becomes a stacking context
+            // and a containing block for descendants. Paint containment is enough
+            // for RenderBlock subclasses (divs etc.): RenderBox::updateFromStyle()
+            // translates "effective overflow non-visible" into HasNonVisibleOverflow
+            // which satisfies requiresLayer(). RenderReplaced subclasses bypass that
+            // path — for SVG roots specifically we add Layout containment so the
+            // recording walk's layer iterator at RenderLayer::paintList visits the
+            // SVG subtree. Plain nested <canvas> direct children deliberately do
+            // NOT get Layout containment: per nested-canvas-not-rendered.html they
+            // remain in-place children of the outer canvas's layer; if they grow
+            // large enough to need their own bitmap they pick up a layer via
+            // canvas compositing instead. The exposed computed contain value stays
+            // "paint" so containment.html's assertion holds.
             // The on-screen draw is suppressed separately at paint time.
             if (RefPtr parent = element->parentElement(); parent && isLayoutSubtreeCanvas(*parent)) {
                 style.setDisplayMaintainingOriginalDisplay(style.display().blockified());
                 style.setPosition(PositionType::Static);
                 auto contain = style.contain();
-                contain.add({ Style::ContainValue::Layout, Style::ContainValue::Paint });
+                contain.add({ Style::ContainValue::Paint });
+                if (element->hasTagName(SVGNames::svgTag))
+                    contain.add({ Style::ContainValue::Layout });
                 style.setContain(contain);
             }
         }

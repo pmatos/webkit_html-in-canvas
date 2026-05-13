@@ -73,6 +73,19 @@ bool RenderHTMLCanvas::requiresLayer() const
     if (canHaveChildren())
         return true;
 
+    // A nested <canvas> direct child of <canvas layoutsubtree> that holds a
+    // rendering context needs a RenderLayer so the recording walk at
+    // RenderLayer::paintList visits it and captures its bitmap into the outer
+    // canvas's snapshot. Plain nested <canvas>es with no rendering context stay
+    // layerless — see nested-canvas-not-rendered.html.
+    if (canvasElement().renderingContext()) {
+        if (RefPtr parent = canvasElement().parentElement(); parent
+            && parent->hasTagName(HTMLNames::canvasTag)
+            && parent->hasAttributeWithoutSynchronization(HTMLNames::layoutsubtreeAttr)
+            && document().settings().canvasDrawElementEnabled())
+            return true;
+    }
+
     return canvasCompositingStrategy(*this) != CanvasPaintedToEnclosingLayer;
 }
 
@@ -108,6 +121,14 @@ void RenderHTMLCanvas::layout()
 void RenderHTMLCanvas::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
     ASSERT(!isSkippedContentRoot(*this));
+
+    // Suppress on-screen draw of a nested <canvas> inside <canvas layoutsubtree>.
+    // RenderBlock::paint() handles this for block descendants, but
+    // RenderReplaced::paint() bypasses that path. The recording walk uses
+    // PaintBehavior::CanvasSubtreeRecording, not CanvasSubtreeRecord, so this
+    // skip only fires during the screen-paint walk.
+    if (paintInfo.paintBehavior.contains(PaintBehavior::CanvasSubtreeRecord))
+        return;
 
     GraphicsContext& context = paintInfo.context();
 
