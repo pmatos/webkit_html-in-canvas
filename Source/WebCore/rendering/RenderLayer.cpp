@@ -52,6 +52,7 @@
 #include "BorderShape.h"
 #include "BoxLayoutShape.h"
 #include "CSSFilterRenderer.h"
+#include "ImageBuffer.h"
 #include "CSSPropertyNames.h"
 #include "Chrome.h"
 #include "ContainerNodeInlines.h"
@@ -4085,7 +4086,39 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
             // transform.").
             auto recordingFlags = paintFlags | PaintLayerFlag::AppliedTransform;
 
-            childLayer->paintLayer(recorder, recordingInfo, recordingFlags);
+            // SVG-URL filter chains (filter: url(#...), backdrop-filter: url(#...))
+            // include primitives like <feimage> whose source has no equivalent
+            // GraphicsContext op. Recording them directly into a DisplayList drops
+            // the filter graph silently. Instead, rasterize the layer's paint —
+            // with its filter applied — to an intermediate ImageBuffer using a
+            // normal GraphicsContext, then emit a single drawImageBuffer onto the
+            // recorder. drawElementImage replay later draws the filtered pixels.
+            // (Issue #25.)
+            auto hasReferenceFilter = renderer->style().filter().hasReferenceFilter()
+                || renderer->style().backdropFilter().hasReferenceFilter();
+            RefPtr<ImageBuffer> filterRasterBuffer;
+            if (hasReferenceFilter) {
+                filterRasterBuffer = ImageBuffer::create(
+                    FloatSize { borderBox.size() },
+                    RenderingMode::Unaccelerated,
+                    RenderingPurpose::Unspecified,
+                    1,
+                    DestinationColorSpace::SRGB(),
+                    PixelFormat::BGRA8);
+            }
+            if (filterRasterBuffer) {
+                auto& bufferContext = filterRasterBuffer->context();
+                FloatPoint absoluteOrigin = renderer->localToAbsolute(FloatPoint { borderBox.location() }, { });
+                bufferContext.translate(-absoluteOrigin.x(), -absoluteOrigin.y());
+                childLayer->paintLayer(bufferContext, recordingInfo, recordingFlags);
+                FloatSize bufferSize { borderBox.size() };
+                recorder.drawImageBuffer(*filterRasterBuffer,
+                    FloatRect { borderBox },
+                    FloatRect { FloatPoint { }, bufferSize },
+                    ImagePaintingOptions { });
+            } else {
+                childLayer->paintLayer(recorder, recordingInfo, recordingFlags);
+            }
 
             auto displayList = recorder.takeDisplayList();
             auto& canvasElement = canvas->canvasElement();
@@ -6794,6 +6827,7 @@ TextStream& operator<<(TextStream& ts, PaintBehavior behavior)
     case PaintBehavior::DraggableSnapshot: ts << "DraggableSnapshot"_s; break;
     case PaintBehavior::IncludeDocumentMarkers: ts << "IncludeDocumentMarkers"_s; break;
     case PaintBehavior::CanvasSubtreeRecord: ts << "CanvasSubtreeRecord"_s; break;
+    case PaintBehavior::CanvasSubtreeRecording: ts << "CanvasSubtreeRecording"_s; break;
     }
 
     return ts;
