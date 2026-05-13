@@ -93,19 +93,16 @@ void RenderHTMLCanvas::layout()
 {
     // RenderReplaced does not visit children. When layoutsubtree is on we host real
     // children that must be laid out so they have hit-testable boxes and IO geometry.
-    // Lay the canvas out FIRST so its own logical size is resolved before children
-    // query it for percentage size resolution (issue #28's percent-sizing depends on
-    // the canvas's contentBoxLogicalHeight returning 200 rather than the pre-layout 0).
     // Non-element fallback children (text nodes for whitespace) do not contribute
     // visible layout — clear their needs-layout flag so the post-layout assertion
     // passes.
-    RenderReplaced::layout();
     for (auto* child = firstChild(); child; child = child->nextSibling()) {
         if (CheckedPtr renderElement = dynamicDowncast<RenderElement>(child))
             renderElement->layoutIfNeeded();
         else
             child->clearNeedsLayout();
     }
+    RenderReplaced::layout();
 }
 
 void RenderHTMLCanvas::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
