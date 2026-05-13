@@ -1733,7 +1733,20 @@ ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImageIntern
         // Pinned by corpus tests filtered-basic.html, shadow-basic.html, and
         // shadow-non-opaque-element.html.
         auto filterSwitcher = CanvasFilterContextSwitcher::create(*this, destRect);
-        bool needsCompositeBuffer = shouldDrawShadows() || filterSwitcher;
+        // Route through an intermediate buffer when the canvas has any state that
+        // must apply to the WHOLE replayed image rather than to each individual
+        // recorded op: shadow, filter, globalAlpha != 1, or globalCompositeOperation
+        // / globalBlend other than the default source-over/normal. The recorded
+        // display list contains per-item SetState items (fillStyle / strokeStyle / etc.)
+        // that reset alpha/composite per op, so direct replay onto drawingContext()
+        // would apply the canvas state once per recorded item instead of once to the
+        // unified result (corpus tests compositing-op-basic, compositing-op-non-opaque-element,
+        // global-alpha-basic).
+        bool needsCompositeBuffer = shouldDrawShadows()
+            || filterSwitcher
+            || state().globalAlpha != 1
+            || state().globalComposite != CompositeOperator::SourceOver
+            || state().globalBlend != BlendMode::Normal;
 
         if (needsCompositeBuffer) {
             auto buffer = context->createAlignedImageBuffer(destSize);
