@@ -3806,6 +3806,7 @@ void RenderLayer::paintLayerContents(GraphicsContext& context, const LayerPainti
             PaintBehavior::DrawsHDRContent,
             PaintBehavior::IncludeDocumentMarkers,
             PaintBehavior::CanvasSubtreeRecord,
+            PaintBehavior::CanvasSubtreeRecording,
         };
         OptionSet<PaintBehavior> paintBehavior = paintingInfo.paintBehavior & flagsToCopy;
 
