@@ -3612,6 +3612,25 @@ HandleUserInputEventResult EventHandler::handleWheelEventInternal(const Platform
     // itself finds and tries to scroll overflow scrollers.
     determineWheelEventTarget(event, element, scrollableArea, isOverWidget);
 
+#if ENABLE(KINETIC_SCROLLING) && (PLATFORM(GTK) || PLATFORM(WPE))
+    // Non-animated wheel scrolls (hasPreciseScrollingDeltas → ScrollBehavior::NeverAnimate
+    // in ScrollAnimator::handleWheelEvent) bypass animation entirely, so the kinetic
+    // path that dispatches scrollend via ScrollingEffectsController::scrollAnimationDidEnd
+    // (webkit.org/b/306243) never runs. Detect the end marker of the wheel stream here
+    // — even when the event itself carries a zero delta and would be filtered out before
+    // reaching processWheelEventForScrolling — and close out the awaiting-scrollend
+    // state on whichever scrollable area is currently latched.
+    bool isWheelStreamEnd = (event.phase() == PlatformWheelEventPhase::Ended && event.momentumPhase() == PlatformWheelEventPhase::None)
+        || event.momentumPhase() == PlatformWheelEventPhase::Ended;
+    if (isWheelStreamEnd) {
+        ScrollableArea* endTarget = scrollableArea.get();
+        if (!endTarget)
+            endTarget = view.get();
+        if (endTarget && endTarget->isAwaitingScrollend())
+            endTarget->scrollDidEnd();
+    }
+#endif
+
 #if PLATFORM(COCOA) || PLATFORM(WIN) || PLATFORM(GTK) || PLATFORM(WPE)
     std::unique_ptr<WheelEventTestMonitorCompletionDeferrer> deferrer;
     if (monitor) {
