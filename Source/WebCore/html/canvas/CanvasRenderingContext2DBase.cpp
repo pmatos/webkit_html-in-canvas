@@ -1770,7 +1770,13 @@ ExceptionOr<Ref<DOMMatrix>> CanvasRenderingContext2DBase::drawElementImageIntern
                     // this single blit. Intentionally NO clip(destRect) here — the
                     // shadow extends outside the destRect (by offsetX/Y + blur radius)
                     // and must paint into the canvas beyond the destination box.
-                    targetContext->drawImageBuffer(*buffer, destRect);
+                    // Pass the canvas's globalComposite / globalBlend explicitly: the
+                    // default ImagePaintingOptions constructor sets compositeOperator =
+                    // SourceOver, overriding whatever the GraphicsContext state has set
+                    // (issue #27 corpus tests compositing-op-basic /
+                    // compositing-op-non-opaque-element).
+                    ImagePaintingOptions options { state().globalComposite, state().globalBlend };
+                    targetContext->drawImageBuffer(*buffer, destRect, FloatRect { FloatPoint { }, buffer->logicalSize() }, options);
                 }
             }
         } else {
