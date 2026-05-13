@@ -1489,8 +1489,6 @@ imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privac
 # against the Chromium-authored reference. global-alpha-basic now passes after
 # the intermediate-buffer routing for compositing/alpha (#27); the remaining
 # entries are real WebKit-vs-Blink rendering gaps under investigation.
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/compositing-op-basic.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/compositing-op-non-opaque-element.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/draw-element-image-scale-variant.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/opacity-animation.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/percent-sizing.html [ ImageOnlyFailure ]
