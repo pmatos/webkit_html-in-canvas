@@ -1479,7 +1479,6 @@ imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/webgl-
 # runner does not treat the new failure mode as a regression — each is its
 # own focused render-parity follow-up.
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/drawElementImage-returned-matrix-worker.html [ Failure ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/css-filter-reference-on-div.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/filtered-svg-ref-svg-feimage-ignored.https.sub.html [ Failure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/filtered-svg-ref-svg-feimage-svg-ignored.https.sub.html [ Failure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/svg-images-ignored.https.sub.html [ Failure ]
