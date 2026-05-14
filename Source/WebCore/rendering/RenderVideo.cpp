@@ -258,6 +258,15 @@ void RenderVideo::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
     rect.moveBy(paintOffset);
     GraphicsContext& context = paintInfo.context();
 
+    // drawElementImage privacy: video content (decoded frame or poster
+    // image) must not be captured into a <canvas layoutsubtree>
+    // recording. Video frames can reveal playback state, cross-origin
+    // captures, or DRM content; the WICG spec aligns with Chromium in
+    // suppressing the entire video paint during the recording walk
+    // (video-webm.html ↔ basic-rect-ref.html). Issue #40.
+    if (paintInfo.paintBehavior.contains(PaintBehavior::CanvasSubtreeRecording))
+        return;
+
     if (paintInfo.phase == PaintPhase::Foreground) {
         page->addRelevantRepaintedObject(*this, rect);
         if (displayingPoster && !context.paintingDisabled())
@@ -292,14 +301,13 @@ void RenderVideo::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
 
     // Avoid unnecessary paints by skipping software painting if
     // the renderer is accelerated, and the paint operation does
-    // not flatten compositing layers, is not snapshotting, and is not
-    // recording into the <canvas layoutsubtree> display list (which has
-    // no GPU compositor on the other side to satisfy the frame).
+    // not flatten compositing layers and is not snapshotting.
+    // (CanvasSubtreeRecording is handled above by suppressing the
+    // entire video paint — issue #40.)
     if (hasAcceleratedCompositing()
         && videoElement->supportsAcceleratedRendering()
         && !paintInfo.paintBehavior.contains(PaintBehavior::FlattenCompositingLayers)
-        && !paintInfo.paintBehavior.contains(PaintBehavior::Snapshotting)
-        && !paintInfo.paintBehavior.contains(PaintBehavior::CanvasSubtreeRecording))
+        && !paintInfo.paintBehavior.contains(PaintBehavior::Snapshotting))
         return;
 
     videoElement->paint(context, rect);
