@@ -82,6 +82,11 @@ RefPtr<ElementImage> ElementImage::createFromDetached(DetachedElementImage&& det
     // The replay path translates by (dx - recordingOrigin) so the display
     // list's (0, 0) lands at (dx - rasterizeOrigin) — placing the box origin
     // pixel (which sits at rasterizeOrigin in the buffer) at exactly (dx, dy).
+    // The receiver-side record carries the rasterizeOrigin (box-origin within
+    // the buffer) as recordingOrigin so the replay translate(dx - recordingOrigin)
+    // continues to land pixels at (dx, dy). inkOverflowBounds is set to the
+    // buffer rect anchored at the same origin so a downstream re-transfer
+    // (worker → main thread → worker) preserves the overflow geometry.
     CanvasChildPaintState state {
         detached.boxSize(),
         detached.boxSize(),
@@ -89,6 +94,7 @@ RefPtr<ElementImage> ElementImage::createFromDetached(DetachedElementImage&& det
         detached.transformOrigin(),
         detached.rasterizeOrigin(),
         detached.sourceUnzoomedCSSSize(),
+        FloatRect { detached.rasterizeOrigin(), detached.inkOverflowSize() },
     };
 
     auto record = CanvasChildPaintRecord::createFromRasterized(WTF::move(displayList), rasterized.releaseNonNull(), state);
@@ -127,16 +133,28 @@ std::optional<DetachedElementImage> ElementImage::detach()
     if (boxSize.isEmpty())
         return std::nullopt;
 
-    // Slice B: rasterize at boxSize (inkOverflowSize == boxSize). Slice E will
-    // expand to the recorded display list's ink-overflow bounding box so
-    // shadows / outlines / blur survive the transfer.
-    //
+    // Slice E: rasterize into a buffer that covers the recorded ink-overflow
+    // bounding rect — not just the border box — so box-shadow, outline, and
+    // glyph hangs survive the transfer to a worker. When a recorder didn't
+    // populate ink overflow (e.g. legacy callers), fall back to the box.
+    FloatRect inkOverflowBounds = recordState.inkOverflowBounds;
+    if (inkOverflowBounds.isEmpty())
+        inkOverflowBounds = FloatRect { recordState.recordingOrigin, boxSize };
+    FloatSize bufferSize = inkOverflowBounds.size();
+    // Position of the border-box origin inside the rasterized buffer. The
+    // receiver replay uses this as recordingOrigin so drawElementImage's
+    // (dx, dy) lands the box origin (not the overflow corner) at (dx, dy).
+    FloatPoint rasterizeOrigin {
+        recordState.recordingOrigin.x() - inkOverflowBounds.x(),
+        recordState.recordingOrigin.y() - inkOverflowBounds.y(),
+    };
+
     // CPU-backed buffer (RenderingMode::Unaccelerated): the resulting NativeImage
     // must be safe to consume on a worker thread. Accelerated backends produce
     // NativeImages whose backing texture references a main-thread/GPU-process
     // resource and would race when the worker replays the display list.
     auto buffer = ImageBuffer::create(
-        boxSize,
+        bufferSize,
         RenderingMode::Unaccelerated,
         RenderingPurpose::Unspecified,
         1.0f,
@@ -146,10 +164,10 @@ std::optional<DetachedElementImage> ElementImage::detach()
         return std::nullopt;
 
     auto& bufferContext = buffer->context();
-    // Match the live-replay translate: subtract recordingOrigin so the box's
-    // origin (at recordingOrigin in the recorded coordinates) lands at the
-    // buffer's (0, 0).
-    bufferContext.translate(-recordState.recordingOrigin.x(), -recordState.recordingOrigin.y());
+    // Translate so the recorded display list (which paints in document-absolute
+    // coordinates) lands inside the buffer with the ink-overflow rect's origin
+    // at the buffer's (0, 0).
+    bufferContext.translate(-inkOverflowBounds.x(), -inkOverflowBounds.y());
     bufferContext.drawDisplayList(m_record->displayList());
 
     auto rasterized = ImageBuffer::sinkIntoNativeImage(WTF::move(buffer));
@@ -159,8 +177,8 @@ std::optional<DetachedElementImage> ElementImage::detach()
     DetachedElementImage detached(
         WTF::move(rasterized),
         boxSize,
-        boxSize,
-        FloatPoint { 0, 0 },
+        bufferSize,
+        rasterizeOrigin,
         recordState.sourceUnzoomedCSSSize,
         recordState.transformOrigin);
 

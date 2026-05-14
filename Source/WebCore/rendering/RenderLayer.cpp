@@ -4196,6 +4196,23 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
                     };
                 }
             }
+            // Slice E: compute the child's ink-overflow bounding rect in
+            // document-absolute coordinates (the recording's coordinate
+            // system). For RenderBox-backed children this is borderBox united
+            // with visualOverflowRect (box-shadow / outline / glyph hangs);
+            // for renderers without an inherent overflow shape we fall back to
+            // the border box. The detach path uses this to size the worker
+            // rasterize buffer so overflow content survives the transfer.
+            FloatRect inkOverflowBounds;
+            {
+                LayoutRect localOverflow = borderBox;
+                if (CheckedPtr box = dynamicDowncast<RenderBox>(*renderer)) {
+                    LayoutRect visualOverflow = box->visualOverflowRect();
+                    localOverflow.unite(visualOverflow);
+                }
+                FloatPoint overflowOrigin = renderer->localToAbsolute(FloatPoint { localOverflow.location() }, { });
+                inkOverflowBounds = FloatRect { overflowOrigin, FloatSize { localOverflow.size() } };
+            }
             CanvasChildPaintState state {
                 FloatSize { borderBox.size() },
                 FloatSize { canvasElement.size() },
@@ -4203,6 +4220,7 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
                 transformOrigin,
                 recordingOrigin,
                 sourceUnzoomedCSSSize,
+                inkOverflowBounds,
             };
             canvasElement.setCanvasChildPaintRecord(
                 *element,

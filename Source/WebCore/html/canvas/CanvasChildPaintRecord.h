@@ -26,6 +26,7 @@
 #pragma once
 
 #include "FloatPoint.h"
+#include "FloatRect.h"
 #include "FloatSize.h"
 #include "NativeImage.h"
 #include <wtf/Ref.h>
@@ -60,6 +61,16 @@ struct CanvasChildPaintState {
     // renderBox available) can still compute cssToGridScale as
     // receiverCanvas.size() / sourceUnzoomedCSSSize.
     FloatSize sourceUnzoomedCSSSize;
+    // Slice E: the ink-overflow bounding rect of all paint operations in this
+    // record, expressed in the SAME document-absolute coordinates as
+    // recordingOrigin. Equals borderBox when the child has no overflow; for
+    // children with box-shadow, outline, glyph hangs, etc. it extends beyond
+    // borderBox. ElementImage::detach() rasterizes into a buffer sized to this
+    // rect (rather than just boxSize) so the worker-side replay still has the
+    // overflow pixels available when drawElementImage's source rect or
+    // captureElementImage's intent reaches outside the box. Captured via
+    // RenderLayer::localBoundingBox.
+    FloatRect inkOverflowBounds;
 };
 
 // Snapshot of one direct child of a <canvas layoutsubtree>: a recorded display list plus
