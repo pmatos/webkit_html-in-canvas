@@ -3808,6 +3808,7 @@ void RenderLayer::paintLayerContents(GraphicsContext& context, const LayerPainti
             PaintBehavior::IncludeDocumentMarkers,
             PaintBehavior::CanvasSubtreeRecord,
             PaintBehavior::CanvasSubtreeRecording,
+            PaintBehavior::DontShowVisitedLinks,
         };
         OptionSet<PaintBehavior> paintBehavior = paintingInfo.paintBehavior & flagsToCopy;
 
@@ -4076,6 +4077,12 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
             // grammar / target-text) can drop themselves. The recorder still must paint
             // text and selection; only privacy-sensitive UI-only overlays are skipped.
             recordingInfo.paintBehavior.add(PaintBehavior::CanvasSubtreeRecording);
+            // Per the privacy/visited-link-svg-fill-stroke-color-ignored.html WPT
+            // (issue #36 sub-test), :visited colours must not leak into the
+            // drawElementImage snapshot. PaintBehavior::DontShowVisitedLinks routes
+            // visitedDependentColor() through visitedDependentShouldReturnUnvisitedLinkColor
+            // and yields the un-visited value (StyleColorResolver.cpp).
+            recordingInfo.paintBehavior.add(PaintBehavior::DontShowVisitedLinks);
             recordingInfo.requireSecurityOriginAccessForWidgets = true;
 
             // The WICG html-in-canvas spec requires drawElementImage to record the
