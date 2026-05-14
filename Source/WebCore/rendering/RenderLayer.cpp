@@ -4212,18 +4212,15 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
             }
             // Slice E: compute the child's ink-overflow bounding rect in
             // document-absolute coordinates (the recording's coordinate
-            // system). For RenderBox-backed children this is borderBox united
-            // with visualOverflowRect (box-shadow / outline / glyph hangs);
-            // for renderers without an inherent overflow shape we fall back to
-            // the border box. The detach path uses this to size the worker
-            // rasterize buffer so overflow content survives the transfer.
+            // system). renderer is already a RenderBox above; unite borderBox
+            // with visualOverflowRect (box-shadow / outline / glyph hangs)
+            // and project the resulting rect into absolute space. The detach
+            // path uses this to size the worker rasterize buffer so overflow
+            // content survives the transfer.
             FloatRect inkOverflowBounds;
             {
                 LayoutRect localOverflow = borderBox;
-                if (CheckedPtr box = dynamicDowncast<RenderBox>(*renderer)) {
-                    LayoutRect visualOverflow = box->visualOverflowRect();
-                    localOverflow.unite(visualOverflow);
-                }
+                localOverflow.unite(renderer->visualOverflowRect());
                 FloatPoint overflowOrigin = renderer->localToAbsolute(FloatPoint { localOverflow.location() }, { });
                 inkOverflowBounds = FloatRect { overflowOrigin, FloatSize { localOverflow.size() } };
             }
