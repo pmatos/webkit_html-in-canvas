@@ -4150,8 +4150,22 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
                 bufferContext.translate(-absoluteOrigin.x(), -absoluteOrigin.y());
                 childLayer->paintLayer(bufferContext, recordingInfo, recordingFlags);
                 FloatSize bufferSize { borderBox.size() };
+                // The recorder lives in document-absolute coordinates (every
+                // other paint that lands in it does so via paintLayer, which
+                // accumulates the layer's offsetFromAncestor into the CTM).
+                // The buffer-hop path bypasses that — it paints into a
+                // separate ImageBuffer — so the drawImageBuffer destination
+                // must be expressed in absolute coords too. Using
+                // FloatRect { borderBox } (renderer-local) places the
+                // filtered pixels at the recorder's (0, 0) instead of at
+                // absoluteOrigin, and the drawElementImage replay then
+                // applies translate(dx - recordingOrigin), landing pixels at
+                // (dx - recordingOrigin.x, dy - recordingOrigin.y) — visibly
+                // wrong whenever the child sits anywhere but the document
+                // origin (#37 css-filter-image / css-backdrop-filter-image /
+                // css-filter-reference-on-div).
                 recorder.drawImageBuffer(*filterRasterBuffer,
-                    FloatRect { borderBox },
+                    FloatRect { absoluteOrigin, bufferSize },
                     FloatRect { FloatPoint { }, bufferSize },
                     ImagePaintingOptions { });
             } else {
