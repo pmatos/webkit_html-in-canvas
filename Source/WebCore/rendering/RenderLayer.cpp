@@ -4083,14 +4083,6 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
             // visitedDependentColor() through visitedDependentShouldReturnUnvisitedLinkColor
             // and yields the un-visited value (StyleColorResolver.cpp).
             recordingInfo.paintBehavior.add(PaintBehavior::DontShowVisitedLinks);
-            // PaintBehavior::FlattenCompositingLayers makes the recording walk
-            // descend into composited descendant layers — without it, paintLayer
-            // hits the paintsIntoDifferentCompositedDestination early-return
-            // (RenderLayer.cpp ~3340) and never paints elements with running
-            // opacity / transform animations or composited video into the
-            // recorder. Mirrors LocalFrameView::paintContentsForSnapshot which
-            // sets the same flag for software snapshot paints. (Issues #38, #40.)
-            recordingInfo.paintBehavior.add(PaintBehavior::FlattenCompositingLayers);
             recordingInfo.requireSecurityOriginAccessForWidgets = true;
 
             // The WICG html-in-canvas spec requires drawElementImage to record the
@@ -4133,22 +4125,35 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
                     DestinationColorSpace::SRGB(),
                     PixelFormat::BGRA8);
             }
-            // Temporarily mirror DontShowVisitedLinks / FlattenCompositingLayers
-            // onto the frame's paint behavior. SVG fill/stroke paint resolution
-            // (LegacyRenderSVGResource::requestPaintingResource) and a few
-            // composited-layer queries read the frame view's paint behavior
-            // rather than the per-walk paintInfo, so without this they would
-            // not see the recording-walk-only flags. Restored at scope exit.
+            // Temporarily mirror DontShowVisitedLinks onto the frame's paint
+            // behavior so SVG fill/stroke paint resolution
+            // (LegacyRenderSVGResource::requestPaintingResource), which reads
+            // the frame view's paint behavior rather than the per-walk
+            // paintInfo, picks up the no-visited-color decision during the
+            // recording walk. The buffer-hop path additionally mirrors
+            // FlattenCompositingLayers (set below on its scoped paintInfo)
+            // for the same reason — without it the SVG filter graph behind a
+            // composited backing never gets exercised. Restored at scope exit.
             auto& frameView = renderer->view().frameView();
             auto savedFrameViewPaintBehavior = frameView.paintBehavior();
-            frameView.setPaintBehavior(savedFrameViewPaintBehavior
-                | PaintBehavior::DontShowVisitedLinks
-                | PaintBehavior::FlattenCompositingLayers);
+            auto frameViewBehaviorForRecording = savedFrameViewPaintBehavior | PaintBehavior::DontShowVisitedLinks;
+            if (filterRasterBuffer)
+                frameViewBehaviorForRecording.add(PaintBehavior::FlattenCompositingLayers);
+            frameView.setPaintBehavior(frameViewBehaviorForRecording);
             if (filterRasterBuffer) {
+                // FlattenCompositingLayers is scoped to the buffer-hop branch
+                // only. Applying it on every recording walk regressed
+                // onpaint-css-animation (rotation animation paint events lost)
+                // and video-ignored.https.sub.html (poster compositing).
+                // Inside the buffer-hop the recorder is bypassed for paint —
+                // we paint into a normal GraphicsContext that needs the
+                // composited filter layer flattened so the filter graph runs.
+                auto bufferRecordingInfo = recordingInfo;
+                bufferRecordingInfo.paintBehavior.add(PaintBehavior::FlattenCompositingLayers);
                 auto& bufferContext = filterRasterBuffer->context();
                 FloatPoint absoluteOrigin = renderer->localToAbsolute(FloatPoint { borderBox.location() }, { });
                 bufferContext.translate(-absoluteOrigin.x(), -absoluteOrigin.y());
-                childLayer->paintLayer(bufferContext, recordingInfo, recordingFlags);
+                childLayer->paintLayer(bufferContext, bufferRecordingInfo, recordingFlags);
                 FloatSize bufferSize { borderBox.size() };
                 // The recorder lives in document-absolute coordinates (every
                 // other paint that lands in it does so via paintLayer, which

@@ -258,13 +258,17 @@ void RenderVideo::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
     rect.moveBy(paintOffset);
     GraphicsContext& context = paintInfo.context();
 
-    // drawElementImage privacy: video content (decoded frame or poster
-    // image) must not be captured into a <canvas layoutsubtree>
-    // recording. Video frames can reveal playback state, cross-origin
-    // captures, or DRM content; the WICG spec aligns with Chromium in
-    // suppressing the entire video paint during the recording walk
-    // (video-webm.html ↔ basic-rect-ref.html). Issue #40.
-    if (paintInfo.paintBehavior.contains(PaintBehavior::CanvasSubtreeRecording))
+    // drawElementImage privacy: decoded video frames must not be
+    // captured into a <canvas layoutsubtree> recording (they would
+    // reveal playback state, cross-origin captures, or DRM content).
+    // Posters, however, are static images and follow the normal
+    // same-origin image gate (RenderSVGImage handles SVG; the poster
+    // path here is a paintIntoRect on cachedImage()). The WICG spec
+    // aligns with Chromium: video-webm.html (no poster) ↔
+    // basic-rect-ref.html expects no video, but
+    // privacy/video-ignored.https.sub.html expects same-origin video
+    // posters to render. Issue #40.
+    if (paintInfo.paintBehavior.contains(PaintBehavior::CanvasSubtreeRecording) && !displayingPoster)
         return;
 
     if (paintInfo.phase == PaintPhase::Foreground) {
