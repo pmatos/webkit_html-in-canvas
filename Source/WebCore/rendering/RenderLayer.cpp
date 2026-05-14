@@ -4083,6 +4083,14 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
             // visitedDependentColor() through visitedDependentShouldReturnUnvisitedLinkColor
             // and yields the un-visited value (StyleColorResolver.cpp).
             recordingInfo.paintBehavior.add(PaintBehavior::DontShowVisitedLinks);
+            // PaintBehavior::FlattenCompositingLayers makes the recording walk
+            // descend into composited descendant layers — without it, paintLayer
+            // hits the paintsIntoDifferentCompositedDestination early-return
+            // (RenderLayer.cpp ~3340) and never paints elements with running
+            // opacity / transform animations or composited video into the
+            // recorder. Mirrors LocalFrameView::paintContentsForSnapshot which
+            // sets the same flag for software snapshot paints. (Issues #38, #40.)
+            recordingInfo.paintBehavior.add(PaintBehavior::FlattenCompositingLayers);
             recordingInfo.requireSecurityOriginAccessForWidgets = true;
 
             // The WICG html-in-canvas spec requires drawElementImage to record the
@@ -4125,15 +4133,17 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
                     DestinationColorSpace::SRGB(),
                     PixelFormat::BGRA8);
             }
-            // Temporarily set DontShowVisitedLinks on the frame's paint behavior
-            // so SVG fill/stroke paint resolution
-            // (LegacyRenderSVGResource::requestPaintingResource) — which reads the
-            // frame view's paint behavior rather than the per-walk paintInfo —
-            // picks up the no-visited-color decision during the recording walk.
-            // Restore at scope exit.
+            // Temporarily mirror DontShowVisitedLinks / FlattenCompositingLayers
+            // onto the frame's paint behavior. SVG fill/stroke paint resolution
+            // (LegacyRenderSVGResource::requestPaintingResource) and a few
+            // composited-layer queries read the frame view's paint behavior
+            // rather than the per-walk paintInfo, so without this they would
+            // not see the recording-walk-only flags. Restored at scope exit.
             auto& frameView = renderer->view().frameView();
             auto savedFrameViewPaintBehavior = frameView.paintBehavior();
-            frameView.setPaintBehavior(savedFrameViewPaintBehavior | PaintBehavior::DontShowVisitedLinks);
+            frameView.setPaintBehavior(savedFrameViewPaintBehavior
+                | PaintBehavior::DontShowVisitedLinks
+                | PaintBehavior::FlattenCompositingLayers);
             if (filterRasterBuffer) {
                 auto& bufferContext = filterRasterBuffer->context();
                 FloatPoint absoluteOrigin = renderer->localToAbsolute(FloatPoint { borderBox.location() }, { });
