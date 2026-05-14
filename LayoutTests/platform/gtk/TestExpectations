@@ -1485,7 +1485,6 @@ imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privac
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/svg-images-ignored.https.sub.html [ Failure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/svg-pattern-cross-origin-image.https.sub.html [ Failure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/svg-use-ignored.https.sub.html [ Failure ]
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/visited-link-svg-fill-stroke-color-ignored.html [ Failure ]
 # webgl-ink-overflow and webgl-scaling previously crashed (Pass Crash); now they
 # run cleanly after #24 ANGLE fix but produce text-output baseline mismatches
 # vs the pixel-test expectations the upstream tests document.

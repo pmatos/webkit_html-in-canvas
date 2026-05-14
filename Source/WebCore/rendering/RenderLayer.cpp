@@ -4125,6 +4125,15 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
                     DestinationColorSpace::SRGB(),
                     PixelFormat::BGRA8);
             }
+            // Temporarily set DontShowVisitedLinks on the frame's paint behavior
+            // so SVG fill/stroke paint resolution
+            // (LegacyRenderSVGResource::requestPaintingResource) — which reads the
+            // frame view's paint behavior rather than the per-walk paintInfo —
+            // picks up the no-visited-color decision during the recording walk.
+            // Restore at scope exit.
+            auto& frameView = renderer->view().frameView();
+            auto savedFrameViewPaintBehavior = frameView.paintBehavior();
+            frameView.setPaintBehavior(savedFrameViewPaintBehavior | PaintBehavior::DontShowVisitedLinks);
             if (filterRasterBuffer) {
                 auto& bufferContext = filterRasterBuffer->context();
                 FloatPoint absoluteOrigin = renderer->localToAbsolute(FloatPoint { borderBox.location() }, { });
@@ -4138,6 +4147,7 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
             } else {
                 childLayer->paintLayer(recorder, recordingInfo, recordingFlags);
             }
+            frameView.setPaintBehavior(savedFrameViewPaintBehavior);
 
             auto displayList = recorder.takeDisplayList();
             auto& canvasElement = canvas->canvasElement();
