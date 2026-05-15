@@ -4083,6 +4083,20 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
             // visitedDependentColor() through visitedDependentShouldReturnUnvisitedLinkColor
             // and yields the un-visited value (StyleColorResolver.cpp).
             recordingInfo.paintBehavior.add(PaintBehavior::DontShowVisitedLinks);
+            // Composited descendants (opacity / transform animations) otherwise
+            // short-circuit at the paintsIntoDifferentCompositedDestination
+            // early-return in paintLayer (~3364) and never reach the recorder.
+            // Without this flag a regular screen paint produces an incomplete
+            // display list that overwrites a complete one captured by an
+            // earlier Flatten pass (paintContentsForSnapshot,
+            // ContentfulPaintChecker, or an AccessibilityRegionContext walk —
+            // LocalFrameView.cpp:5711, 5716, 5835), so drawElementImage
+            // subsequently replays nothing. Mirrors
+            // paintContentsForSnapshot's behavior (LocalFrameView.cpp:5835),
+            // since the recording walk has the same semantics: paint into a
+            // software target, no GPU compositor on the other side.
+            // (Issue #38 opacity-animation.)
+            recordingInfo.paintBehavior.add(PaintBehavior::FlattenCompositingLayers);
             recordingInfo.requireSecurityOriginAccessForWidgets = true;
 
             // The WICG html-in-canvas spec requires drawElementImage to record the

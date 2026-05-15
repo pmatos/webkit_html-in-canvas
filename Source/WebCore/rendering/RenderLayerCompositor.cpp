@@ -3811,6 +3811,29 @@ bool RenderLayerCompositor::requiresCompositingForAnimation(RenderLayerModelObje
     if (!(m_compositingTriggers & ChromeClient::AnimationTrigger))
         return false;
 
+    // Descendants of <canvas layoutsubtree> must not be promoted to composited
+    // layers for animation. The compositor draws each composited backing
+    // independently of any RenderLayer paint walk — solid-color fills via
+    // setContentsToSolidColor on layers whose element has a background, and
+    // paint-walk content via paintIntoLayer for other content (text, borders,
+    // …). For a layoutsubtree descendant, those drawn pixels appear in the
+    // snapshot at the descendant's natural document position, ghosting
+    // alongside the drawElementImage replay (issue #38 opacity-animation,
+    // where #block-child has `background: green` and #inline-child has text
+    // content — both leak under their respective animation-promoted
+    // compositor backings). Animations still tick (RAF runs regardless of
+    // compositing); they just update style for the next recording walk
+    // instead of running on a separate compositor layer.
+    //
+    // Skip the canvas element itself (HTMLCanvasElement.cpp:134 also marks
+    // it isInCanvasSubtree). Other compositing triggers (canvas, video,
+    // filter, backdrop-filter, will-change, top-layer, fullscreen, …)
+    // remain in effect via their own requiresCompositingFor… checks, so
+    // structurally required compositing still works.
+    auto* element = renderer.element();
+    if (element && element->isInCanvasSubtree() && !renderer.isRenderHTMLCanvas())
+        return false;
+
     if (auto styleable = Styleable::fromRenderer(renderer)) {
         if (styleable->hasRunningAcceleratedAnimations())
             return true;

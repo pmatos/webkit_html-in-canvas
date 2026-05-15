@@ -1501,9 +1501,17 @@ imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privac
 # against the Chromium-authored reference. global-alpha-basic now passes after
 # the intermediate-buffer routing for compositing/alpha (#27); the remaining
 # entries are real WebKit-vs-Blink rendering gaps under investigation.
-imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/opacity-animation.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/privacy/selection-colors-default.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/video-webm.html [ ImageOnlyFailure ]
+# Sub-pixel text rendering diff inside the backdrop-filter area, caused by the
+# fix for issue #38 (denying animation-triggered compositing for
+# canvas-layoutsubtree descendants in RenderLayerCompositor::requiresCompositingForAnimation).
+# Without that fix, #child and #filtered were both promoted to composited
+# layers via the animation path; with the fix they're only composited if
+# requiresCompositingForFilters returns true, shifting the layer-tree
+# topology and the "Hello" glyph's sub-pixel position by ~1 px inside the
+# grayscale-filtered area. Visual content is otherwise identical.
+imported/w3c/web-platform-tests/wpt_internal/html/canvas/drawElementImage/css-backdrop-filter-with-sibling.html [ ImageOnlyFailure ]
 
 # TB11 visual-effect fidelity — triaged per-test. Recorder/replay cure landed
 # for CSS transform, canvas-2D filter, and canvas-2D shadow state at
